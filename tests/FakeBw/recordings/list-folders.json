@@ -1,0 +1,15 @@
+{
+    "arguments":  [
+                      "list",
+                      "folders",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  2992,
+    "stdoutFormat":  "json",
+    "stdout":  "[{\"name\":\"BWCP Fixture folder\",\"object\":\"folder\",\"id\":\"00000000-0000-4000-8000-000000000006\"},{\"name\":\"No Folder\",\"object\":\"folder\",\"id\":\"\"}]",
+    "stderr":  ""
+}

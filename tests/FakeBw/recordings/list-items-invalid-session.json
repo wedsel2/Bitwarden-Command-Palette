@@ -1,0 +1,15 @@
+{
+    "arguments":  [
+                      "list",
+                      "items",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[invalid-session]"
+                    },
+    "exitCode":  1,
+    "durationMs":  668,
+    "stdoutFormat":  "empty",
+    "stdout":  "",
+    "stderr":  "Vault is locked."
+}

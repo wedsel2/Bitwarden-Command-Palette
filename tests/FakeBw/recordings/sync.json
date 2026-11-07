@@ -1,0 +1,14 @@
+{
+    "arguments":  [
+                      "sync",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  5417,
+    "stdoutFormat":  "text",
+    "stdout":  "Syncing complete.",
+    "stderr":  ""
+}

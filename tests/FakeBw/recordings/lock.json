@@ -1,0 +1,13 @@
+{
+    "arguments":  [
+                      "lock"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  2894,
+    "stdoutFormat":  "text",
+    "stdout":  "Your vault is locked.",
+    "stderr":  ""
+}

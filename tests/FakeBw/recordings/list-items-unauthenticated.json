@@ -1,0 +1,15 @@
+{
+    "arguments":  [
+                      "list",
+                      "items",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+
+                    },
+    "exitCode":  1,
+    "durationMs":  662,
+    "stdoutFormat":  "empty",
+    "stdout":  "",
+    "stderr":  "You are not logged in."
+}

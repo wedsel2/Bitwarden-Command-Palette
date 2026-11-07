@@ -1,0 +1,13 @@
+{
+    "arguments":  [
+                      "--version"
+                  ],
+    "environment":  {
+
+                    },
+    "exitCode":  0,
+    "durationMs":  927,
+    "stdoutFormat":  "text",
+    "stdout":  "2026.10.1\n",
+    "stderr":  "Could not find data file, \"[bw-data]\\data.json\"; creating it instead.\n"
+}

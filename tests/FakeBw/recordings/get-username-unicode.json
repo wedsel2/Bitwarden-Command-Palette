@@ -1,0 +1,16 @@
+{
+    "arguments":  [
+                      "get",
+                      "username",
+                      "00000000-0000-4000-8000-000000000013",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  3307,
+    "stdoutFormat":  "text",
+    "stdout":  "fixture-Ünïcode ✓ 名前",
+    "stderr":  ""
+}

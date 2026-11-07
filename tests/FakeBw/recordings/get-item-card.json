@@ -1,0 +1,16 @@
+{
+    "arguments":  [
+                      "get",
+                      "item",
+                      "00000000-0000-4000-8000-000000000002",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  3783,
+    "stdoutFormat":  "json",
+    "stdout":  "{\"type\":3,\"favorite\":false,\"reprompt\":0,\"id\":\"00000000-0000-4000-8000-000000000002\",\"collectionIds\":[],\"object\":\"item\",\"name\":\"BWCP Fixture - Card\",\"fields\":[],\"card\":{\"cardholderName\":\"Fixture Holder\",\"brand\":\"Visa\",\"number\":\"4111111111111111\",\"expMonth\":\"1\",\"expYear\":\"2030\",\"code\":\"123\"},\"passwordHistory\":[],\"creationDate\":\"2026-01-01T00:00:00.000Z\",\"revisionDate\":\"2026-01-01T00:00:00.000Z\",\"attachments\":[]}",
+    "stderr":  ""
+}

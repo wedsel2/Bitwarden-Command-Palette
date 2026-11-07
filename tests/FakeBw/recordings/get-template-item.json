@@ -1,0 +1,15 @@
+{
+    "arguments":  [
+                      "get",
+                      "template",
+                      "item"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  2948,
+    "stdoutFormat":  "json",
+    "stdout":  "{\"type\":1,\"favorite\":false,\"reprompt\":0,\"name\":\"Item name\",\"notes\":\"Some notes about this item.\",\"fields\":[],\"passwordHistory\":[]}",
+    "stderr":  ""
+}

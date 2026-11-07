@@ -1,0 +1,17 @@
+{
+    "arguments":  [
+                      "unlock",
+                      "--passwordenv",
+                      "BWCP_MASTER_PASSWORD",
+                      "--raw",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BWCP_MASTER_PASSWORD":  "[master-password]"
+                    },
+    "exitCode":  0,
+    "durationMs":  3864,
+    "stdoutFormat":  "text",
+    "stdout":  "ZmFrZS1zZXNzaW9uLWtleS0xLWZha2Utc2Vzc2lvbi1rZXktMS1mYWtlLXNlc3Npb24ta2V5LTEtZmFrZS1zZQ==",
+    "stderr":  ""
+}

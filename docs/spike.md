@@ -68,9 +68,40 @@ Remove the test package afterwards with
 
 **6. Output formats.** `bw status` returns JSON with `serverUrl`, `lastSync`,
 `userEmail`, `userId` and `status` (`unauthenticated`, `locked` or
-`unlocked`), per its help text. *Open: the outputs of `unlock --raw`,
-`list items` and `get` need a recording from a throwaway test vault, which you
-run; see [Recording](#recording-questions-6-7-and-9).*
+`unlocked`). Recorded from a free test account on the EU server, 53 commands,
+in [`tests/FakeBw/recordings/`](../tests/FakeBw/recordings/):
+
+- `unlock --raw` prints only the session key, with no newline. `list items`
+  prints one JSON array of full items, logins with their password and TOTP
+  secret included, so the extension must take only what `VaultIndex` keeps
+  (ADR 10). Cards and secure notes are in the same list and are told apart by
+  `type` (1 login, 2 note, 3 card). `list folders` includes a "No Folder"
+  entry whose `id` is an empty string.
+- Every failure exits with 1, with a one-line message on stderr and nothing on
+  stdout: `You are not logged in.`, `Vault is locked.`, `Not found.`, or for a
+  duplicate name a list of IDs and names. **`Not found.` covers both an unknown
+  ID and an item that lacks the field** (no username, no password, no TOTP, or
+  a card or note), so the extension must decide from the indexed item whether a
+  field exists, not from the error.
+- A wrong master password gives several `ERROR bitwarden_crypto…` log lines
+  from the CLI's Rust core on stderr. A missing password variable gives a
+  warning and `Master password is required.` Neither ever contained the
+  password (the script checked).
+- `--response` wraps output as `{"success":true,"data":…}` or
+  `{"success":false,"message":…}`, on stdout even for failures; the wrong
+  password message there is `Cryptography error, The decryption operation
+  failed`. It is easier to parse than plain stderr text.
+- **Each call takes about 3 to 4 seconds** (`status` and locked calls just
+  under 1 s, `sync` about 5 s): the CLI starts a Node process and decrypts the
+  vault every time. Searching must work on `VaultIndex` in memory, and a copy
+  costs one `bw get` call, so the extension should show that it is working.
+- The master password **reprompt** flag (`reprompt: 1`) is ignored by the CLI:
+  `bw get password` returns the password. Whether the extension honours it is
+  a design decision for phase 4.
+- Unicode names, usernames and passwords come back intact as UTF-8.
+- On a fresh data folder, the first command prints `Could not find data
+  file…; creating it instead.` on stderr and still succeeds, so the parser must
+  go by the exit code, not by stderr text.
 
 **7. `--passwordenv` and `BW_SESSION`.** `bw unlock --passwordenv <name>` exists
 and reads the password from that environment variable. `--session` is an
@@ -79,6 +110,10 @@ documented default. Unlocking invalidates every earlier session key. Useful
 global flags: `--nointeraction` (never prompt, so a missing input fails instead
 of hanging), `--raw`, `--response` (JSON envelope). `bw get password <id>`
 also accepts a search term, so the extension always passes the item's ID.
+Confirmed by the recording: unlock works through `--passwordenv`, every list
+and get works with only `BW_SESSION` in the child's environment, an invalid or
+pre-lock session key gives `Vault is locked.`, and `status` reports `locked`
+for a key used after `bw lock`.
 
 **8. Signature and builds.** Both Windows builds, `bw-windows` and
 `bw-oss-windows`, are Authenticode-signed by **Bitwarden Inc.** (DigiCert
@@ -88,7 +123,13 @@ publishes. The OSS build contains only GPL-3.0 code and lacks just one command,
 build (`GPL-3.0 or Bitwarden-1.0`). On first run `bw` creates its own
 `data.json` in its data folder.
 
-**9. TOTP edge cases.** *Open: needs the test vault recording.*
+**9. TOTP edge cases.** Without Premium, `bw get totp` on an item that has a
+TOTP secret (plain or `otpauth://`) fails with `Premium status is required to
+use this feature.`; on an item without one it fails with `Not found.` The
+secret itself is still in `list items` and `get item`. So the extension shows
+"Copy TOTP" only for items with a secret and reports the Premium message as it
+is. *Open, low priority: the output with Premium, which needs a Premium test
+account; Bitwarden documents it as the six-digit code.*
 
 **10. Generator settings.** *Open, phase 6.*
 
