@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Session, vault and clipboard logic. No UI references, so it is fully unit-testable. -->
+  <PropertyGroup>
+    <RootNamespace>BitwardenCommandPalette.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BitwardenCommandPalette.Core.Tests" />
+  </ItemGroup>
+</Project>

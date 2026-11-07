@@ -1,0 +1,24 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+coverage/
+*.binlog
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Packaging and signing material never belongs in the repository.
+AppPackages/
+*.pfx
+*.p12
+*.snk
+
+# Local Bitwarden CLI state, should one ever end up here.
+data.json
+.env
