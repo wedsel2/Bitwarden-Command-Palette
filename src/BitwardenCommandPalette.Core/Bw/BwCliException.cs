@@ -52,6 +52,7 @@ public sealed class BwCliException : Exception
     private static string MessageFor(BwErrorKind kind) => kind switch
     {
         BwErrorKind.CouldNotStart => "The Bitwarden CLI could not be started.",
+        BwErrorKind.UntrustedExecutable => "bw.exe is missing or not signed by Bitwarden Inc., so it was not started.",
         BwErrorKind.TimedOut => "The Bitwarden CLI did not respond in time.",
         BwErrorKind.UnexpectedOutput => "The Bitwarden CLI returned output that could not be read.",
         BwErrorKind.NotLoggedIn => "The Bitwarden CLI is not logged in. Run 'bw login' once in a terminal.",

@@ -53,6 +53,9 @@ public enum BwErrorKind
     /// <summary>bw could not be started.</summary>
     CouldNotStart,
 
+    /// <summary>bw.exe is missing or not signed by Bitwarden Inc., so it was not started.</summary>
+    UntrustedExecutable,
+
     /// <summary>bw did not finish in time and was stopped.</summary>
     TimedOut,
 

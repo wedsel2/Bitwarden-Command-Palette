@@ -80,8 +80,9 @@ internal sealed class FakeBwHost : IDisposable
         return this;
     }
 
+    /// <summary>A client for the fake, which is unsigned, so the signature check is replaced.</summary>
     public static BwCli CreateCli(TimeSpan? timeout = null) =>
-        new(new BwCliOptions(ExecutablePath) { Timeout = timeout ?? TimeSpan.FromSeconds(30) });
+        new(new BwCliOptions(ExecutablePath) { Timeout = timeout ?? TimeSpan.FromSeconds(30) }, new TrustEverything());
 
     public void Dispose()
     {
@@ -101,4 +102,10 @@ internal sealed class FakeBwHost : IDisposable
         };
         File.WriteAllText(ScenarioFile, scenario.ToJsonString());
     }
+}
+
+/// <summary>Accepts every file, for tests of behaviour other than the signature check.</summary>
+internal sealed class TrustEverything : IExecutableVerifier
+{
+    public bool IsTrusted(string path) => true;
 }

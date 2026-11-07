@@ -334,13 +334,95 @@ public sealed class BwCliTests : IDisposable
     }
 
     [Fact]
-    public async Task AMissingExecutableCannotStart()
+    public async Task AMissingExecutableIsReported()
     {
-        var missing = new BwCli(new BwCliOptions(Path.Combine(AppContext.BaseDirectory, "missing", "bw.exe")));
+        var missing = new BwCli(new BwCliOptions(Path.Combine(AppContext.BaseDirectory, "missing", "bw.exe")), new TrustEverything());
 
         var error = await Assert.ThrowsAsync<BwCliException>(() => missing.LockAsync(cancellationToken: Token));
 
-        Assert.Equal(BwErrorKind.CouldNotStart, error.Kind);
+        Assert.Equal(BwErrorKind.UntrustedExecutable, error.Kind);
+    }
+
+    [Fact]
+    public async Task AFileThatIsNotAProgramCannotStart()
+    {
+        var folder = Directory.CreateTempSubdirectory("notaprogram-");
+        try
+        {
+            var text = Path.Combine(folder.FullName, "bw.exe");
+            await File.WriteAllTextAsync(text, "not a program", Token);
+            var cli = new BwCli(new BwCliOptions(text), new TrustEverything());
+
+            var error = await Assert.ThrowsAsync<BwCliException>(() => cli.LockAsync(cancellationToken: Token));
+
+            Assert.Equal(BwErrorKind.CouldNotStart, error.Kind);
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ASlowSignatureCheckIsBoundByTheTimeout()
+    {
+        bw.Reply("status-locked", "status");
+        var cli = new BwCli(new BwCliOptions(FakeBwHost.ExecutablePath) { Timeout = TimeSpan.FromMilliseconds(300) }, new SlowVerifier());
+
+        var error = await Assert.ThrowsAsync<BwCliException>(() => cli.GetStatusAsync(cancellationToken: Token));
+
+        Assert.Equal(BwErrorKind.TimedOut, error.Kind);
+        Assert.Empty(bw.Calls);
+    }
+
+    [Fact]
+    public async Task ASlowSignatureCheckCanBeCancelled()
+    {
+        var cli = new BwCli(new BwCliOptions(FakeBwHost.ExecutablePath), new SlowVerifier());
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        cancellation.CancelAfter(TimeSpan.FromMilliseconds(300));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cli.GetStatusAsync(cancellationToken: cancellation.Token));
+    }
+
+    [Fact]
+    public async Task ALinkIsCheckedAndStartedAsItsTarget()
+    {
+        bw.Reply("status-locked", "status");
+        var folder = Directory.CreateTempSubdirectory("bwlink-");
+        try
+        {
+            var link = Path.Combine(folder.FullName, "bw.exe");
+            try
+            {
+                File.CreateSymbolicLink(link, FakeBwHost.ExecutablePath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Assert.Skip("Creating a symbolic link needs Developer Mode or administrator rights here.");
+            }
+
+            var recorder = new RecordingVerifier();
+            await new BwCli(new BwCliOptions(link), recorder).GetStatusAsync(cancellationToken: Token);
+
+            Assert.Equal(Path.GetFullPath(FakeBwHost.ExecutablePath), Assert.Single(recorder.Checked));
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AnUnsignedExecutableIsNeverStarted()
+    {
+        bw.Reply("status-locked", "status");
+        var real = new BwCli(new BwCliOptions(FakeBwHost.ExecutablePath));
+
+        var error = await Assert.ThrowsAsync<BwCliException>(() => real.GetStatusAsync(cancellationToken: Token));
+
+        Assert.Equal(BwErrorKind.UntrustedExecutable, error.Kind);
+        Assert.Empty(bw.Calls);
     }
 
     [Fact]
@@ -370,5 +452,27 @@ public sealed class BwCliTests : IDisposable
         Assert.Equal(BwErrorKind.Failed, new BwCliException().Kind);
         Assert.Equal(BwErrorKind.Failed, new BwCliException("ours").Kind);
         Assert.Equal(BwErrorKind.Failed, new BwCliException("ours", new InvalidOperationException()).Kind);
+    }
+}
+
+/// <summary>Takes far longer than any test timeout, like a revocation fetch on a dead network.</summary>
+internal sealed class SlowVerifier : IExecutableVerifier
+{
+    public bool IsTrusted(string path)
+    {
+        Thread.Sleep(TimeSpan.FromSeconds(5));
+        return true;
+    }
+}
+
+/// <summary>Trusts everything and remembers which paths it was asked about.</summary>
+internal sealed class RecordingVerifier : IExecutableVerifier
+{
+    public List<string> Checked { get; } = [];
+
+    public bool IsTrusted(string path)
+    {
+        Checked.Add(path);
+        return true;
     }
 }
