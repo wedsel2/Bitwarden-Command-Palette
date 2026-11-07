@@ -43,7 +43,7 @@ conflict, security wins.
 | Component | Responsibility |
 |---|---|
 | **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. No Bitwarden or Windows security logic. |
-| **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). |
+| **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). Owns `VaultIndex` and runs search and copy itself, so the extension never holds the key, the index or a fetched secret. The Windows events come through `ILockEvents`; `SystemLockEvents` reads them from `SystemEvents`. |
 | **VaultIndex** | The searchable list of logins, without secrets, loaded at unlock and dropped at lock ([ADR 10](adr/0010-metadata-in-memory-secrets-per-action.md)). |
 | **BwCli** | Starts `bw.exe` only after checking its signature, with arguments that never contain a secret, and parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). `BwLocator` finds a signed `bw.exe` in the settings, the known install locations or `PATH` ([ADR 15](adr/0015-finding-and-verifying-bw.md)). |
 | **ClipboardService** | Puts a secret on the clipboard outside history and cloud sync, and clears it later if it is still ours ([ADR 11](adr/0011-clipboard-outside-history-cleared-if-unchanged.md)). Only its `Win32Clipboard` touches the Windows clipboard. |
@@ -68,8 +68,10 @@ the extension in its own process, so there is no pipe or socket of our own
 4. `SessionManager` keeps the key in memory and starts both timers. The master
    password is dropped.
 5. `BwCli` runs `bw sync` (if the last sync is older than the configured
-   interval) and `bw list items`. `VaultIndex` keeps the login metadata and
-   discards every secret field from the parsed output.
+   interval, 30 minutes by default) and `bw list items`. `VaultIndex` keeps the
+   login metadata and discards every secret field from the parsed output. If
+   this step fails or is cancelled, the vault is locked again; if a lock comes
+   meanwhile, the unlock reports that it was interrupted.
 
 ### Search
 
@@ -94,17 +96,23 @@ once, so a search on another thread never sees a half-loaded list.
    the unlock form comes back and the action runs after unlocking.
 3. Username comes from `VaultIndex`. Password and TOTP are fetched now with
    `bw get password <id>` or `bw get totp <id>`, never earlier.
-4. `ClipboardService` copies it and schedules the clear.
+4. `ClipboardService` copies it and schedules the clear. If the vault was locked,
+   or a timeout passed, while `bw` was fetching, the value is discarded instead.
+
+Both timeouts are measured on the wall clock and checked again before every
+action, so a timer delayed by sleep cannot keep the vault open, and a clock that
+moves back locks it.
 
 ### Lock
 
 Triggered by the idle timer (default 10 minutes), the absolute timer (default
-60 minutes), Windows lock, sleep or sign-out, the lock command, or the
-extension shutting down:
+60 minutes), Windows lock, sleep or sign-out, the lock command, the extension
+shutting down, or `bw` reporting the vault locked:
 
-1. `BwCli` runs `bw lock`, which makes the session key worthless.
-2. `SessionManager` drops the key; `VaultIndex` drops the metadata.
-3. `ClipboardService` clears the clipboard if it still holds our last value.
+1. `SessionManager` drops the key; `VaultIndex` drops the metadata.
+2. `ClipboardService` clears the clipboard if it still holds our last value.
+3. `BwCli` runs `bw lock`, which makes the session key worthless. If it fails,
+   the vault stays locked for us: the only copy of the key is already gone.
 
 At start-up the extension runs `bw lock` first, so a session left behind by a
 crash is closed before anything else.
