@@ -1,7 +1,7 @@
 # Architecture
 
-Target design. What exists today is the pipeline, the secret types, `BwCli`
-and `BwLocator` with the signature check in `Core`, the fake `bw` for tests, and a placeholder extension that loads in
+Target design. What exists today is the pipeline, the secret types, `BwCli`,
+`BwLocator` with the signature check and `VaultIndex` in `Core`, the fake `bw` for tests, and a placeholder extension that loads in
 Command Palette.
 See the [roadmap](roadmap.md) for the order of work and the
 [decision records](adr/README.md) for the reasoning.
@@ -75,6 +75,17 @@ the extension in its own process, so there is no pipe or socket of our own
 
 Search filters `VaultIndex` in memory. No `bw` call, no secret involved. It
 counts as activity and resets the idle timer.
+
+Every word of the query must match the name, a website or the username,
+ignoring case, accents and character width; a word of only invisible characters
+is ignored. Better matches come first: any match in the name over any match in a
+website over any match in the username, then an exact match over the start of
+the field over the start of a word over the middle of one, and a name that
+matches the whole phrase first of all. A website is only its host without
+`www.`, also for a URI stored without a scheme, so a path or query (which can
+hold a token) is never searched. Ties are ordered by name. An empty query lists every login by name, and at
+most 100 results are returned by default. A load replaces the whole list at
+once, so a search on another thread never sees a half-loaded list.
 
 ### Copy
 
