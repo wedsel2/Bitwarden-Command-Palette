@@ -20,8 +20,8 @@ public sealed record BwCliOptions(string ExecutablePath)
 /// </summary>
 public sealed class BwCli : IBwCli
 {
-    /// <summary>The child environment variable that carries the master password.</summary>
-    internal const string PasswordVariable = "BWCP_PW";
+    /// <summary>The name of the child environment variable that carries the master password.</summary>
+    internal const string UnlockVariableName = "BWCP_PW";
 
     /// <summary>The child environment variable that carries the session key.</summary>
     internal const string SessionVariable = "BW_SESSION";
@@ -60,9 +60,9 @@ public sealed class BwCli : IBwCli
         ArgumentNullException.ThrowIfNull(password);
         var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            [PasswordVariable] = password.RevealForChildEnvironment(),
+            [UnlockVariableName] = password.RevealForChildEnvironment(),
         };
-        var result = await RunAsync(["unlock", "--passwordenv", PasswordVariable, "--raw"], environment, cancellationToken).ConfigureAwait(false);
+        var result = await RunAsync(["unlock", "--passwordenv", UnlockVariableName, "--raw"], environment, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(result);
         var key = result.Stdout.Trim();
         return key.Length == 0 ? throw new BwCliException(BwErrorKind.UnexpectedOutput) : new SessionKey(key);
@@ -212,7 +212,7 @@ public sealed class BwCli : IBwCli
 
         // The child gets exactly the secrets this call passes, never ones inherited from us.
         startInfo.Environment.Remove(SessionVariable);
-        startInfo.Environment.Remove(PasswordVariable);
+        startInfo.Environment.Remove(UnlockVariableName);
         foreach (var (name, value) in environment ?? [])
         {
             startInfo.Environment[name] = value;
