@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Test stand-in for bw.exe: replays the recordings and logs how it was called. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>bw</AssemblyName>
+    <RootNamespace>BitwardenCommandPalette.FakeBw</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Runs as a child process, so coverage cannot see it; SonarQube treats it as test code. -->
+    <SonarQubeTestProject>true</SonarQubeTestProject>
+  </PropertyGroup>
+</Project>

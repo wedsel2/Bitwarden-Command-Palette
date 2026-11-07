@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BitwardenCommandPalette.Core.Tests/BitwardenCommandPalette.Core.Tests.csproj" />
+    <Project Path="tests/FakeBw/FakeBw.csproj" />
   </Folder>
 </Solution>
