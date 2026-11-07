@@ -61,7 +61,7 @@ jobs:
           /d:sonar.host.url=https://sonarcloud.io
           /d:sonar.token="$env:SONAR_TOKEN"
           /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.*.xml"
-          /d:sonar.coverage.exclusions="src/BitwardenCommandPalette.Extension/**"
+          /d:sonar.coverage.exclusions="src/BitwardenCommandPalette.Extension/**,tools/**"
           /d:sonar.qualitygate.wait=true
       # CI=true makes restore run in locked mode: a lock file out of date fails here,
       # as does a known high or critical vulnerability (NuGet audit).
