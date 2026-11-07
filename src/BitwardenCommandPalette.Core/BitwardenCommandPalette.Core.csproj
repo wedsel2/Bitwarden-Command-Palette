@@ -9,4 +9,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="BitwardenCommandPalette.Core.Tests" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Windows lock, sleep and sign-out events (ADR 9). -->
+    <PackageReference Include="Microsoft.Win32.SystemEvents" />
+  </ItemGroup>
 </Project>
