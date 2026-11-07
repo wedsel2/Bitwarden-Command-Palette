@@ -82,11 +82,16 @@ These settings are not stored in the repository and must be redone if it is recr
 3. **Security settings** (Settings → Advanced Security): enable Dependabot
    alerts, CodeQL default setup (C# and Actions), secret scanning and push
    protection. Leave Dependabot version and security updates off.
-4. **Branch ruleset for `main`**: require a pull request and the status checks
-   `lint`, `test` and `scan-source`; block force pushes.
-5. **Merging**: allow squash merging with the pull request title as the commit
-   message, so the Conventional Commit type decides the release. Enable
-   auto-merge for Renovate.
+4. **Branch ruleset `main`** on the default branch, without bypass: require a
+   pull request merged by squash, the status checks `lint`, `test` and
+   `scan-source` from GitHub Actions, and linear history; block force pushes
+   and deletion.
+5. **Merging**: squash merging only, with the pull request title as the commit
+   title and its description as the body, so the Conventional Commit type
+   decides the release. Allow auto-merge (for Renovate) and delete branches
+   after merging.
+
+Steps 3 to 5 can be applied with `gh api`; steps 1 and 2 need the browser.
 
 ## Local use
 
