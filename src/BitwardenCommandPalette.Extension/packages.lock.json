@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows10.0.26100": {
+      "Microsoft.CommandPalette.Extensions": {
+        "type": "Direct",
+        "requested": "[0.12.260812002, )",
+        "resolved": "0.12.260812002",
+        "contentHash": "XqzE3P0X9KI7GBT6491k3OD7BzNuFdYek8TiCzweq8O81pYlE0AdZH2SB8gEFpCKhwRciOcHMu0agsW+h0yJww==",
+        "dependencies": {
+          "Microsoft.Windows.CsWinRT": "2.2.0"
+        }
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "YlTamXppEQls6DYWt7RdUuwWDb0lyw/vXCaGeQpLCpsLmfwGuCkOz/vIGgMTV7ECsJcavkCOkxZXv9s8rdAHkQ=="
+      },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "axfieK5mj+uS/wLYl0dhlRFWdNP1iKHhx/M6DZNXPCSve7q4TCogw//W6BWGsYhnWuSw55aqheHE0a8l8s1oTw=="
+      },
+      "Microsoft.Windows.CsWinRT": {
+        "type": "Direct",
+        "requested": "[2.3.1, )",
+        "resolved": "2.3.1",
+        "contentHash": "ojoYrj8m8mAx6LVxofQXgfvsReDTv2LQFeDgXt5Lw99r5fv7dCR19ybd1JN0OueaWvL+BNqv0E7zZCgqptP9zA=="
+      },
+      "Microsoft.Windows.SDK.BuildTools.MSIX": {
+        "type": "Direct",
+        "requested": "[1.7.261102100, )",
+        "resolved": "1.7.261102100",
+        "contentHash": "2iMu69T4eSxcwmI6zMPDt7nAVL2dL+G3XXRIz0cYnwej3qmP8pg/CLyxrvD7T8YSxyQrTJnO8zgafzHXDCijSA=="
+      },
+      "Shmuelie.WinRTServer": {
+        "type": "Direct",
+        "requested": "[2.2.1, )",
+        "resolved": "2.2.1",
+        "contentHash": "Nt+t3cMga8YWXToaTw//CGjO9mTQORc+qSKyrVXZAhnyUWiZ7flhFBTWI1igp+2o2PYl5CCNHYfz9JI4F25GPA=="
+      },
+      "bitwardencommandpalette.core": {
+        "type": "Project"
+      }
+    },
+    "net10.0-windows10.0.26100/win-arm64": {
+      "Microsoft.CommandPalette.Extensions": {
+        "type": "Direct",
+        "requested": "[0.12.260812002, )",
+        "resolved": "0.12.260812002",
+        "contentHash": "XqzE3P0X9KI7GBT6491k3OD7BzNuFdYek8TiCzweq8O81pYlE0AdZH2SB8gEFpCKhwRciOcHMu0agsW+h0yJww==",
+        "dependencies": {
+          "Microsoft.Windows.CsWinRT": "2.2.0"
+        }
+      },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "axfieK5mj+uS/wLYl0dhlRFWdNP1iKHhx/M6DZNXPCSve7q4TCogw//W6BWGsYhnWuSw55aqheHE0a8l8s1oTw=="
+      }
+    },
+    "net10.0-windows10.0.26100/win-x64": {
+      "Microsoft.CommandPalette.Extensions": {
+        "type": "Direct",
+        "requested": "[0.12.260812002, )",
+        "resolved": "0.12.260812002",
+        "contentHash": "XqzE3P0X9KI7GBT6491k3OD7BzNuFdYek8TiCzweq8O81pYlE0AdZH2SB8gEFpCKhwRciOcHMu0agsW+h0yJww==",
+        "dependencies": {
+          "Microsoft.Windows.CsWinRT": "2.2.0"
+        }
+      },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "axfieK5mj+uS/wLYl0dhlRFWdNP1iKHhx/M6DZNXPCSve7q4TCogw//W6BWGsYhnWuSw55aqheHE0a8l8s1oTw=="
+      }
+    }
+  }
+}

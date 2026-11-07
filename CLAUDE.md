@@ -18,11 +18,13 @@ dotnet tool restore
 dotnet build
 dotnet test --coverlet --coverlet-threshold 80
 dotnet format BitwardenCommandPalette.slnx
-dotnet nuget-license -i BitwardenCommandPalette.slnx -t -a allowed-licenses.json
+dotnet nuget-license -i BitwardenCommandPalette.slnx -t -a allowed-licenses.json -override license-overrides.json -ignore license-exceptions.json
 uvx pre-commit run --all-files   # everything CI lint runs
+dotnet build src/BitwardenCommandPalette.Extension -c Debug -p:Platform=x64   # loose MSIX layout for a local test
 ```
 
-Needs Windows and the SDK version in `global.json`.
+Needs Windows, the .NET SDK version in `global.json` and the Windows SDK
+10.0.26100 (for the CsWinRT projection and MSIX tooling).
 
 ## Workflow
 
@@ -32,8 +34,10 @@ Needs Windows and the SDK version in `global.json`.
 - Add a package by adding its version to `Directory.Packages.props` and a
   reference without a version to the project, then `dotnet restore`; commit the
   updated `packages.lock.json` files. Never edit a lock file by hand.
-- A new package must pass the licence check. Never add an exception to
-  `allowed-licenses.json` without asking.
+- A new package must pass the licence check. Never add to
+  `allowed-licenses.json` or `license-exceptions.json` without asking (ADR 14).
+  An override in `license-overrides.json` is only for an open-source licence
+  the checker cannot read, after reading the licence file of that exact version.
 - Pin GitHub Actions by commit SHA with the version in a trailing comment.
 
 ## Pull requests

@@ -5,6 +5,14 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
+  <ItemGroup Label="Command Palette extension">
+    <PackageVersion Include="Microsoft.CommandPalette.Extensions" Version="0.12.260812002" />
+    <PackageVersion Include="Microsoft.Win32.SystemEvents" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Windows.CsWinRT" Version="2.3.1" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.261102100" />
+    <PackageVersion Include="Shmuelie.WinRTServer" Version="2.2.1" />
+  </ItemGroup>
+
   <ItemGroup Label="Tests">
     <PackageVersion Include="coverlet.MTP" Version="10.1.0" />
     <PackageVersion Include="xunit.v3" Version="4.0.2" />

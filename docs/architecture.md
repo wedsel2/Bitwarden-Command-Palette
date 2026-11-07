@@ -1,6 +1,7 @@
 # Architecture
 
-Target design. What exists today is the pipeline and an empty `Core` library.
+Target design. What exists today is the pipeline, an empty `Core` library and
+a placeholder extension that loads in Command Palette.
 See the [roadmap](roadmap.md) for the order of work and the
 [decision records](adr/README.md) for the reasoning.
 
@@ -115,7 +116,7 @@ lifetime short and does not claim erasure ([ADR 6](adr/0006-threat-model.md)).
 
 ```text
 src/BitwardenCommandPalette.Core/         session, vault index, bw, clipboard, secrets
-src/BitwardenCommandPalette.Extension/    Command Palette extension, MSIX (phase 2)
+src/BitwardenCommandPalette.Extension/    Command Palette extension, MSIX
 tests/BitwardenCommandPalette.Core.Tests/ unit tests, canary tests
 tests/FakeBw/                             test stand-in for bw.exe (phase 3)
 docs/                                     this document, roadmap, pipeline, ADRs
