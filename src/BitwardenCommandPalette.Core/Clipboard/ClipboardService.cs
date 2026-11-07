@@ -113,10 +113,11 @@ public sealed class ClipboardService : IClipboardService, IDisposable
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            Forget();
 
-            // A failed copy leaves the clipboard empty (IClipboard.SetText), so nothing is held.
+            // If this throws, the previous copy may still be on the clipboard, so its pending
+            // clear stays; the new value is never held.
             clipboard.SetText(secret.RevealForClipboard());
+            Forget();
             copied = secret;
             Schedule(clearDelay);
         }
@@ -179,11 +180,7 @@ public sealed class ClipboardService : IClipboardService, IDisposable
     private void TryClearOrRetry()
     {
         attempts++;
-        if (TryClear())
-        {
-            Forget();
-        }
-        else if (attempts < ClearAttempts)
+        if (!TryClear() && attempts < ClearAttempts)
         {
             Schedule(RetryInterval);
         }
@@ -203,11 +200,7 @@ public sealed class ClipboardService : IClipboardService, IDisposable
 
         try
         {
-            if (clipboard.HoldsText(copied.RevealForClipboard()))
-            {
-                clipboard.Clear();
-            }
-
+            _ = clipboard.ClearIfHolds(copied.RevealForClipboard());
             return true;
         }
         catch (ClipboardException)

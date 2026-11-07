@@ -165,6 +165,19 @@ public sealed class ClipboardServiceTests : IDisposable
     }
 
     [Fact]
+    public void AFailedCopyKeepsThePreviousCopysClear()
+    {
+        service.Copy(new Secret(Password));
+        clipboard.FailNext = 1;
+
+        Assert.Throws<ClipboardException>(() => service.CopyUsername(Username));
+        Assert.Equal(Password, clipboard.Text);
+
+        time.Advance(ClipboardService.DefaultClearDelay);
+        Assert.Null(clipboard.Text);
+    }
+
+    [Fact]
     public void ABusyClipboardIsRetriedUntilItClears()
     {
         service.Copy(new Secret(Password));
@@ -290,19 +303,19 @@ public sealed class ClipboardServiceTests : IDisposable
             Marked = true;
         }
 
-        public bool HoldsText(string text)
+        public bool ClearIfHolds(string text)
         {
             ThrowIfBusy();
             Reads++;
-            return string.Equals(Text, text, StringComparison.Ordinal);
-        }
+            if (!string.Equals(Text, text, StringComparison.Ordinal))
+            {
+                return false;
+            }
 
-        public void Clear()
-        {
-            ThrowIfBusy();
             Clears++;
             Text = null;
             Marked = false;
+            return true;
         }
 
         private void ThrowIfBusy()

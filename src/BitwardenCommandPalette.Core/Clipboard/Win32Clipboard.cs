@@ -32,7 +32,9 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
     private static readonly TimeSpan OpenRetryInterval = TimeSpan.FromMilliseconds(50);
 
     private static readonly Lazy<(uint History, uint Cloud, uint Monitor)> ExclusionFormats =
-        new(() => (Register(HistoryFormatName), Register(CloudFormatName), Register(MonitorFormatName)));
+        new(
+            () => (Register(HistoryFormatName), Register(CloudFormatName), Register(MonitorFormatName)),
+            LazyThreadSafetyMode.PublicationOnly); // a failed registration is tried again, not cached
 
     /// <inheritdoc />
     public void SetText(string text)
@@ -61,10 +63,46 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
     }
 
     /// <inheritdoc />
-    public bool HoldsText(string text)
+    public bool ClearIfHolds(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         using var session = Open();
+        if (!ContainsText(text))
+        {
+            return false;
+        }
+
+        return EmptyClipboard() ? true : throw Failure("empty the clipboard");
+    }
+
+    /// <summary>Whether the clipboard text is exactly <paramref name="text"/>.</summary>
+    /// <param name="text">The text to compare with, ordinally.</param>
+    /// <returns>True only for an exact match.</returns>
+    internal static bool HoldsText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        using var session = Open();
+        return ContainsText(text);
+    }
+
+    /// <summary>Empties the clipboard.</summary>
+    internal static void Clear()
+    {
+        using var session = Open();
+        if (!EmptyClipboard())
+        {
+            throw Failure("empty the clipboard");
+        }
+    }
+
+    /// <summary>Whether data in the registered format <paramref name="name"/> is on the clipboard.</summary>
+    /// <param name="name">A registered clipboard format name.</param>
+    /// <returns>True if data in that format is on the clipboard.</returns>
+    internal static bool HasFormat(string name) => IsClipboardFormatAvailable(Register(name));
+
+    // The clipboard must be open.
+    private static bool ContainsText(string text)
+    {
         if (!IsClipboardFormatAvailable(UnicodeText))
         {
             return false;
@@ -84,7 +122,14 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
 
         try
         {
-            var chars = new ReadOnlySpan<char>((void*)data, checked((int)(GlobalSize(handle) / sizeof(char))));
+            // Text too long for a span cannot be ours; never let its size throw.
+            var length = GlobalSize(handle) / sizeof(char);
+            if (length > int.MaxValue)
+            {
+                return false;
+            }
+
+            var chars = new ReadOnlySpan<char>((void*)data, (int)length);
             var end = chars.IndexOf('\0');
             return (end < 0 ? chars : chars[..end]).SequenceEqual(text);
         }
@@ -93,21 +138,6 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
             _ = GlobalUnlock(handle);
         }
     }
-
-    /// <inheritdoc />
-    public void Clear()
-    {
-        using var session = Open();
-        if (!EmptyClipboard())
-        {
-            throw Failure("empty the clipboard");
-        }
-    }
-
-    /// <summary>Whether the clipboard holds data in the registered format <paramref name="name"/>.</summary>
-    /// <param name="name">A registered clipboard format name.</param>
-    /// <returns>True if data in that format is on the clipboard.</returns>
-    internal static bool HasFormat(string name) => IsClipboardFormatAvailable(Register(name));
 
     private static uint Register(string name)
     {

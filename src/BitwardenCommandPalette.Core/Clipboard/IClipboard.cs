@@ -14,11 +14,11 @@ internal interface IClipboard
     /// <param name="text">The text to copy.</param>
     void SetText(string text);
 
-    /// <summary>Whether the clipboard text is exactly <paramref name="text"/>.</summary>
-    /// <param name="text">The text to compare with.</param>
-    /// <returns>True only for an ordinal match.</returns>
-    bool HoldsText(string text);
-
-    /// <summary>Empties the clipboard.</summary>
-    void Clear();
+    /// <summary>
+    /// Empties the clipboard if its text is exactly <paramref name="text"/>. The check and the
+    /// clear happen while the clipboard is open, so a copy made in between cannot be wiped.
+    /// </summary>
+    /// <param name="text">The text to compare with, ordinally.</param>
+    /// <returns>True if the clipboard was emptied.</returns>
+    bool ClearIfHolds(string text);
 }

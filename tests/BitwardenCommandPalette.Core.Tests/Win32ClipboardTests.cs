@@ -12,14 +12,14 @@ public sealed class Win32ClipboardTests : IDisposable
 
     private readonly Win32Clipboard clipboard = new();
 
-    public void Dispose() => clipboard.Clear();
+    public void Dispose() => Win32Clipboard.Clear();
 
     [Fact]
     public void TextIsSetWithEveryExclusionMark()
     {
         clipboard.SetText(Text);
 
-        Assert.True(clipboard.HoldsText(Text));
+        Assert.True(Win32Clipboard.HoldsText(Text));
         Assert.True(Win32Clipboard.HasFormat(Win32Clipboard.HistoryFormatName));
         Assert.True(Win32Clipboard.HasFormat(Win32Clipboard.CloudFormatName));
         Assert.True(Win32Clipboard.HasFormat(Win32Clipboard.MonitorFormatName));
@@ -34,7 +34,7 @@ public sealed class Win32ClipboardTests : IDisposable
     {
         clipboard.SetText(Text);
 
-        Assert.False(clipboard.HoldsText(other));
+        Assert.False(Win32Clipboard.HoldsText(other));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class Win32ClipboardTests : IDisposable
 
         clipboard.SetText(text);
 
-        Assert.True(clipboard.HoldsText(text));
+        Assert.True(Win32Clipboard.HoldsText(text));
     }
 
     [Fact]
@@ -52,10 +52,22 @@ public sealed class Win32ClipboardTests : IDisposable
     {
         clipboard.SetText(Text);
 
-        clipboard.Clear();
+        Win32Clipboard.Clear();
 
-        Assert.False(clipboard.HoldsText(Text));
+        Assert.False(Win32Clipboard.HoldsText(Text));
         Assert.False(Win32Clipboard.HasFormat(Win32Clipboard.HistoryFormatName));
+    }
+
+    [Fact]
+    public void ClearIfHoldsEmptiesOnlyAnExactMatch()
+    {
+        clipboard.SetText(Text);
+
+        Assert.False(clipboard.ClearIfHolds("someone else's text"));
+        Assert.True(Win32Clipboard.HoldsText(Text));
+
+        Assert.True(clipboard.ClearIfHolds(Text));
+        Assert.False(Win32Clipboard.HoldsText(Text));
     }
 
     [Fact]
@@ -65,7 +77,7 @@ public sealed class Win32ClipboardTests : IDisposable
 
         clipboard.SetText("second");
 
-        Assert.False(clipboard.HoldsText(Text));
-        Assert.True(clipboard.HoldsText("second"));
+        Assert.False(Win32Clipboard.HoldsText(Text));
+        Assert.True(Win32Clipboard.HoldsText("second"));
     }
 }
