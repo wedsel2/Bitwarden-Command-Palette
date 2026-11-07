@@ -1,6 +1,6 @@
 # 15. How bw.exe is found and how its signature is checked
 
-- Status: Proposed (confirm the revocation and search rules below)
+- Status: Accepted
 - Date: 2026-11-07
 
 ## Context
