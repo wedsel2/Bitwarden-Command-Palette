@@ -7,7 +7,7 @@ intentionally less detailed.
 |---|---|---|---|
 | 0 | Pipeline | Solution skeleton, CI with all gates, Renovate, semantic-release | Done |
 | 1 | Design | Architecture doc, threat model and decision records, `CLAUDE.md`, roadmap | Done |
-| 2 | Spike | A hello-world extension installed in Command Palette; the questions below answered; [findings](spike.md) written; Proposed records settled | In progress: extension builds, CLI checked; live test and vault recording open |
+| 2 | Spike | A hello-world extension installed in Command Palette; the questions below answered; [findings](spike.md) written; Proposed records settled | In progress: extension builds, CLI checked, recording script ready; live test and vault recording open |
 | 3 | Core | Remove the spike diagnostics (`SpikeLog`, `Microsoft.Win32.SystemEvents` unless lock events need it); `BwCli`, `SessionManager` with timers and lock events, `VaultIndex`, `ClipboardService`, secret types, fake `bw`, canary tests | |
 | 4 | Extension | Unlock form, search list, per-login actions (copy username, password or TOTP), lock command, settings page | |
 | 5 | Release | Signed MSIX with SBOM and provenance on GitHub Releases, install guide, README with the threat model | |

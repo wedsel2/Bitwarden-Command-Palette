@@ -119,6 +119,8 @@ src/BitwardenCommandPalette.Core/         session, vault index, bw, clipboard, s
 src/BitwardenCommandPalette.Extension/    Command Palette extension, MSIX
 tests/BitwardenCommandPalette.Core.Tests/ unit tests, canary tests
 tests/FakeBw/                             test stand-in for bw.exe (phase 3)
+tests/FakeBw/recordings/                  scrubbed bw output from a test vault
+tools/                                    Record-BwOutput.ps1, which makes those recordings
 docs/                                     this document, roadmap, pipeline, ADRs
 ```
 

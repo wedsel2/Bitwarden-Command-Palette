@@ -70,7 +70,7 @@ Remove the test package afterwards with
 `userEmail`, `userId` and `status` (`unauthenticated`, `locked` or
 `unlocked`), per its help text. *Open: the outputs of `unlock --raw`,
 `list items` and `get` need a recording from a throwaway test vault, which you
-run; the recording script comes next.*
+run; see [Recording](#recording-questions-6-7-and-9).*
 
 **7. `--passwordenv` and `BW_SESSION`.** `bw unlock --passwordenv <name>` exists
 and reads the password from that environment variable. `--session` is an
@@ -91,6 +91,37 @@ build (`GPL-3.0 or Bitwarden-1.0`). On first run `bw` creates its own
 **9. TOTP edge cases.** *Open: needs the test vault recording.*
 
 **10. Generator settings.** *Open, phase 6.*
+
+### Recording (questions 6, 7 and 9)
+
+[`tools/Record-BwOutput.ps1`](../tools/Record-BwOutput.ps1) records the CLI's
+answers for the fake `bw`. It needs a **new, empty Bitwarden account made only
+for this**, never your real one, and runs in Windows PowerShell 5.1 or
+PowerShell 7:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\Record-BwOutput.ps1
+```
+
+Add `-ServerUrl https://...` for a self-hosted test server and `-BwPath` when
+`bw` is not on `PATH`. The script works in a temporary bw data folder, so your
+own `bw` login is untouched, and asks you to log in there with bw's own prompt,
+to confirm the account's email, and for its master password (passed to `bw`
+only through `--passwordenv` on the child's environment). It stops before
+writing anything if the vault holds an item or folder whose name does not start
+with `BWCP Fixture`. It then recreates its fixture logins (full, no TOTP, no
+username, no password, TOTP as an `otpauth://` URI, master password reprompt,
+duplicate names, Unicode), a card and a secure note, all with made-up values,
+and records about fifty commands: status in each state, unlock with a missing
+and a wrong password, list and get for every fixture, `--response` envelopes,
+an invalid and a locked session.
+
+Before writing, it replaces the account email, every ID, every date, the
+session keys, your user folder and a self-hosted server URL, and refuses to
+write if any of them is left. It logs out and deletes the temporary folder at
+the end. Output goes to `tests/FakeBw/recordings/`, one JSON file per command
+plus a `manifest.json` with the CLI version and signature. Review it with
+`git diff` before it is committed.
 
 ## Prior art (question 11)
 
