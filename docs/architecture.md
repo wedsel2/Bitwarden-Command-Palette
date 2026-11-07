@@ -46,7 +46,7 @@ conflict, security wins.
 | **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). |
 | **VaultIndex** | The searchable list of logins, without secrets, loaded at unlock and dropped at lock ([ADR 10](adr/0010-metadata-in-memory-secrets-per-action.md)). |
 | **BwCli** | Starts `bw.exe` only after checking its signature, with arguments that never contain a secret, and parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). `BwLocator` finds a signed `bw.exe` in the settings, the known install locations or `PATH` ([ADR 15](adr/0015-finding-and-verifying-bw.md)). |
-| **ClipboardService** | Puts a secret on the clipboard outside history and cloud sync, and clears it later if it is still ours ([ADR 11](adr/0011-clipboard-outside-history-cleared-if-unchanged.md)). |
+| **ClipboardService** | Puts a secret on the clipboard outside history and cloud sync, and clears it later if it is still ours ([ADR 11](adr/0011-clipboard-outside-history-cleared-if-unchanged.md)). Only its `Win32Clipboard` touches the Windows clipboard. |
 | **Secret types** | Wrap every secret so it cannot be printed or logged by accident ([ADR 13](adr/0013-secret-types-and-canary-tests.md)). |
 
 The extension and Core run in one process. Command Palette already isolates

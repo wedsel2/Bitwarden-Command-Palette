@@ -1,0 +1,109 @@
+using BitwardenCommandPalette.Core.Clipboard;
+
+namespace BitwardenCommandPalette.Core.Tests;
+
+/// <summary>
+/// Runs the real Windows clipboard, so it overwrites and then empties whatever is on it. All
+/// clipboard tests live in this one class, which xUnit never runs in parallel with itself.
+/// </summary>
+public sealed class Win32ClipboardTests : IDisposable
+{
+    private const string Text = "canary-win32-clipboard-5a9d";
+
+    private readonly Win32Clipboard clipboard = new();
+
+    public void Dispose() => Win32Clipboard.Clear();
+
+    [Fact]
+    public void TextIsSetWithEveryExclusionMark()
+    {
+        clipboard.SetText(Text);
+
+        Assert.True(Win32Clipboard.HoldsText(Text));
+        Assert.True(Win32Clipboard.HasFormat(Win32Clipboard.HistoryFormatName));
+        Assert.True(Win32Clipboard.HasFormat(Win32Clipboard.CloudFormatName));
+        Assert.True(Win32Clipboard.HasFormat(Win32Clipboard.MonitorFormatName));
+    }
+
+    [Theory]
+    [InlineData("canary-win32-clipboard-5a9")]
+    [InlineData("canary-win32-clipboard-5a9d ")]
+    [InlineData("CANARY-WIN32-CLIPBOARD-5A9D")]
+    [InlineData("")]
+    public void OnlyTheExactTextMatches(string other)
+    {
+        clipboard.SetText(Text);
+
+        Assert.False(Win32Clipboard.HoldsText(other));
+    }
+
+    [Fact]
+    public void TextWithUnicodeAndSpacesRoundTrips()
+    {
+        const string text = " pässwörd 🔑 ";
+
+        clipboard.SetText(text);
+
+        Assert.True(Win32Clipboard.HoldsText(text));
+    }
+
+    [Fact]
+    public void ClearEmptiesTheClipboard()
+    {
+        clipboard.SetText(Text);
+
+        Win32Clipboard.Clear();
+
+        Assert.False(Win32Clipboard.HoldsText(Text));
+        Assert.False(Win32Clipboard.HasFormat(Win32Clipboard.HistoryFormatName));
+    }
+
+    [Fact]
+    public void ClearIfHoldsEmptiesOnlyAnExactMatch()
+    {
+        clipboard.SetText(Text);
+
+        Assert.False(clipboard.ClearIfHolds("someone else's text"));
+        Assert.True(Win32Clipboard.HoldsText(Text));
+
+        Assert.True(clipboard.ClearIfHolds(Text));
+        Assert.False(Win32Clipboard.HoldsText(Text));
+    }
+
+    [Fact]
+    public void AClipboardHeldByAnotherApplicationIsRefusedWithoutTheText()
+    {
+        ClipboardException error;
+        using (new ClipboardHolder())
+        {
+            error = Assert.Throws<ClipboardException>(() => clipboard.SetText(Text));
+            Assert.Throws<ClipboardException>(() => clipboard.ClearIfHolds(Text));
+        }
+
+        Assert.Contains("open the clipboard", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(Text, error.ToString(), StringComparison.Ordinal);
+        Assert.False(Win32Clipboard.HoldsText(Text));
+    }
+
+    [Fact]
+    public void AClipboardReleasedWithinTheRetriesIsUsed()
+    {
+        using (new ClipboardHolder(TimeSpan.FromMilliseconds(120)))
+        {
+            clipboard.SetText(Text);
+        }
+
+        Assert.True(Win32Clipboard.HoldsText(Text));
+    }
+
+    [Fact]
+    public void ANewCopyReplacesThePreviousText()
+    {
+        clipboard.SetText(Text);
+
+        clipboard.SetText("second");
+
+        Assert.False(Win32Clipboard.HoldsText(Text));
+        Assert.True(Win32Clipboard.HoldsText("second"));
+    }
+}
