@@ -69,9 +69,12 @@ the extension in its own process, so there is no pipe or socket of our own
    password is dropped.
 5. `BwCli` runs `bw sync` (if the last sync is older than the configured
    interval, 30 minutes by default) and `bw list items`. `VaultIndex` keeps the
-   login metadata and discards every secret field from the parsed output. If
-   this step fails or is cancelled, the vault is locked again; if a lock comes
-   meanwhile, the unlock reports that it was interrupted.
+   login metadata and discards every secret field from the parsed output. A
+   sync that fails because the server cannot be reached is skipped, so the
+   vault still unlocks offline from its local copy. If the list fails or the
+   unlock is cancelled, the vault is locked again; if a lock comes meanwhile,
+   the unlock reports that it was interrupted. The vault counts as unlocked
+   only once the list is loaded.
 
 ### Search
 
@@ -101,7 +104,7 @@ once, so a search on another thread never sees a half-loaded list.
 
 Both timeouts are measured on the wall clock and checked again before every
 action, so a timer delayed by sleep cannot keep the vault open, and a clock that
-moves back locks it.
+moves back more than 5 seconds (more than a time sync correction) locks it.
 
 ### Lock
 

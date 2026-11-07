@@ -77,6 +77,82 @@ public sealed class SessionManagerTests : IAsyncDisposable
         Assert.Contains("sync", cli.Calls);
     }
 
+    [Theory]
+    [InlineData(BwErrorKind.Failed)]
+    [InlineData(BwErrorKind.TimedOut)]
+    public async Task AnUnreachableServerStillUnlocksFromTheLocalVault(BwErrorKind kind)
+    {
+        cli.FailSync = kind;
+
+        Assert.Equal(UnlockOutcome.Unlocked, await UnlockAsync());
+
+        Assert.Equal(["status", "unlock", "sync", "list"], cli.Calls);
+        Assert.True(session.IsUnlocked);
+    }
+
+    [Fact]
+    public async Task ASyncThatSaysTheSessionIsGoneFailsTheUnlock()
+    {
+        cli.FailSync = BwErrorKind.VaultLocked;
+
+        await Assert.ThrowsAsync<BwCliException>(UnlockAsync);
+
+        Assert.False(session.IsUnlocked);
+        Assert.DoesNotContain("list", cli.Calls);
+        Assert.Equal([LockReason.UnlockFailed], locks);
+    }
+
+    [Fact]
+    public async Task TheVaultIsNotReportedUnlockedUntilTheIndexIsLoaded()
+    {
+        var gate = new TaskCompletionSource();
+        cli.ListGate = gate.Task;
+
+        var unlock = UnlockAsync();
+        Assert.False(session.IsUnlocked);
+
+        gate.SetResult();
+        Assert.Equal(UnlockOutcome.Unlocked, await unlock.ConfigureAwait(true));
+        Assert.True(session.IsUnlocked);
+    }
+
+    [Fact]
+    public async Task AThrowingLockedHandlerStillLocksTheCli()
+    {
+        await UnlockAsync();
+        session.Locked += (_, _) => throw new InvalidOperationException("handler");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => session.LockAsync(LockReason.Command));
+
+        Assert.False(session.IsUnlocked);
+        Assert.Same(cli.Issued, Assert.Single(cli.LockedWith));
+    }
+
+    [Fact]
+    public async Task AnUndefinedFieldIsRefused()
+    {
+        await UnlockAsync();
+        cli.Calls.Clear();
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => session.CopyAsync(Id, (CopyField)42, Token));
+
+        Assert.Empty(cli.Calls);
+        Assert.Empty(clipboard.Copied);
+    }
+
+    [Fact]
+    public async Task ATimeSyncCorrectionWithinTheToleranceDoesNotLock()
+    {
+        await UnlockAsync();
+        _ = session.Search(null);
+
+        time.AdjustTime(time.GetUtcNow() - SessionManager.ClockTolerance);
+
+        Assert.True(session.IsUnlocked);
+        Assert.NotEmpty(session.Search(null));
+        Assert.Empty(locks);
+    }
+
     [Fact]
     public async Task ACliThatIsNotLoggedInIsReportedWithoutUnlocking()
     {

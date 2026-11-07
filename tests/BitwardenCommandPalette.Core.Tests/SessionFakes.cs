@@ -76,10 +76,12 @@ internal sealed class FakeCli : IBwCli
         return FailLock is { } kind ? Task.FromException(new BwCliException(kind)) : Task.CompletedTask;
     }
 
+    public BwErrorKind? FailSync { get; set; }
+
     public Task SyncAsync(SessionKey session, CancellationToken cancellationToken = default)
     {
         Calls.Add("sync");
-        return Task.CompletedTask;
+        return FailSync is { } kind ? Task.FromException(new BwCliException(kind)) : Task.CompletedTask;
     }
 
     public async Task<IReadOnlyList<BwLogin>> ListLoginsAsync(SessionKey session, CancellationToken cancellationToken = default)

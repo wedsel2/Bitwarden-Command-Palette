@@ -53,7 +53,8 @@ public enum CopyOutcome
 /// <remarks>
 /// <para>
 /// Both timeouts are measured on the wall clock and checked again before every action, so a
-/// timer delayed by sleep cannot keep the vault open; a clock that moves back locks it.
+/// timer delayed by sleep cannot keep the vault open; a clock that moves back more than
+/// <see cref="ClockTolerance"/> locks it.
 /// </para>
 /// <para>
 /// A lock drops the key, the index and our clipboard value at once, then runs <c>bw lock</c>.
@@ -82,6 +83,9 @@ public sealed class SessionManager : IAsyncDisposable
 
     /// <summary>How old the last sync may be before an unlock runs <c>bw sync</c>, by default.</summary>
     public static readonly TimeSpan DefaultSyncInterval = TimeSpan.FromMinutes(30);
+
+    /// <summary>How far the clock may step back (a time sync correction) before it locks the vault.</summary>
+    internal static readonly TimeSpan ClockTolerance = TimeSpan.FromSeconds(5);
 
     private readonly IBwCli cli;
     private readonly IClipboardService clipboard;
@@ -136,14 +140,17 @@ public sealed class SessionManager : IAsyncDisposable
     /// </summary>
     public event EventHandler<LockEventArgs>? Locked;
 
-    /// <summary>Whether the vault is unlocked and neither timeout has passed.</summary>
+    /// <summary>
+    /// Whether the vault is unlocked, its index is loaded and neither timeout has passed. False
+    /// while an unlock is still syncing or listing.
+    /// </summary>
     public bool IsUnlocked
     {
         get
         {
             lock (gate)
             {
-                return key is not null && Expired() is null;
+                return key is not null && index.IsLoaded && Expired() is null;
             }
         }
     }
@@ -300,6 +307,10 @@ public sealed class SessionManager : IAsyncDisposable
     public async Task<CopyOutcome> CopyAsync(string itemId, CopyField field, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(itemId);
+        if (!Enum.IsDefined(field))
+        {
+            throw new ArgumentOutOfRangeException(nameof(field));
+        }
         SessionKey? session;
         BwLogin? login;
         long expected;
@@ -442,16 +453,13 @@ public sealed class SessionManager : IAsyncDisposable
             return UnlockOutcome.NotLoggedIn;
         }
 
-        long expected;
-        bool sync;
+        long expected = 0;
+        bool sync = false;
+        bool wasDisposed;
         lock (gate)
         {
-            if (disposed)
-            {
-                expected = -1;
-                sync = false;
-            }
-            else
+            wasDisposed = disposed;
+            if (!wasDisposed)
             {
                 // bw unlock has already made any earlier key worthless.
                 _ = Drop(clearClipboard: false);
@@ -463,7 +471,7 @@ public sealed class SessionManager : IAsyncDisposable
             }
         }
 
-        if (expected < 0)
+        if (wasDisposed)
         {
             await LockQuietlyAsync(issued).ConfigureAwait(false);
             throw new ObjectDisposedException(nameof(SessionManager));
@@ -473,7 +481,7 @@ public sealed class SessionManager : IAsyncDisposable
         {
             if (sync)
             {
-                await cli.SyncAsync(issued, cancellationToken).ConfigureAwait(false);
+                await SyncIfReachableAsync(issued, cancellationToken).ConfigureAwait(false);
             }
 
             var logins = await cli.ListLoginsAsync(issued, cancellationToken).ConfigureAwait(false);
@@ -514,8 +522,29 @@ public sealed class SessionManager : IAsyncDisposable
             return;
         }
 
-        Locked?.Invoke(this, new LockEventArgs(reason));
-        await LockQuietlyAsync(dropped).ConfigureAwait(false);
+        try
+        {
+            Locked?.Invoke(this, new LockEventArgs(reason));
+        }
+        finally
+        {
+            // A throwing handler must not keep bw's session alive.
+            await LockQuietlyAsync(dropped).ConfigureAwait(false);
+        }
+    }
+
+    // Offline, or the server unreachable: the local vault is still usable, so the unlock goes on.
+    // A sync that says the session is gone is a real failure.
+    private async Task SyncIfReachableAsync(SessionKey session, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cli.SyncAsync(session, cancellationToken).ConfigureAwait(false);
+        }
+        catch (BwCliException exception) when (exception.Kind is not (BwErrorKind.VaultLocked or BwErrorKind.NotLoggedIn or BwErrorKind.UntrustedExecutable))
+        {
+            // The list below reads the local copy; the next unlock tries to sync again.
+        }
     }
 
     private async Task LockQuietlyAsync(SessionKey session)
@@ -571,7 +600,7 @@ public sealed class SessionManager : IAsyncDisposable
         }
 
         var now = time.GetUtcNow();
-        if (now < unlockedAt || now < lastActivity)
+        if (now < unlockedAt - ClockTolerance || now < lastActivity - ClockTolerance)
         {
             return LockReason.ClockChanged;
         }
