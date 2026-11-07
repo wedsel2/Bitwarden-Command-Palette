@@ -16,7 +16,8 @@ public sealed record BwCliOptions(string ExecutablePath)
 /// The only code that starts a process (ADR 7). Secrets never go in an argument: the master
 /// password reaches <c>bw unlock</c> through <c>--passwordenv</c>, the session key reaches every
 /// other command as <c>BW_SESSION</c>, both on the child's environment only. Every call passes
-/// <c>--nointeraction</c>. bw's output is parsed, never shown or logged (ADR 13).
+/// <c>--nointeraction</c>. bw's output is parsed, never shown or logged (ADR 13). Before each
+/// start the file's signature is checked; an unchanged file is not checked twice (ADR 15).
 /// </summary>
 public sealed class BwCli : IBwCli
 {
@@ -27,11 +28,22 @@ public sealed class BwCli : IBwCli
     internal const string SessionVariable = "BW_SESSION";
 
     private readonly BwCliOptions options;
+    private readonly IExecutableVerifier verifier;
 
-    /// <summary>Creates a client for the given <c>bw.exe</c>.</summary>
+    /// <summary>Creates a client for the given <c>bw.exe</c>, which must be signed by Bitwarden Inc.</summary>
     /// <param name="options">Where bw is and how long a call may take.</param>
     public BwCli(BwCliOptions options)
+        : this(options, new AuthenticodeVerifier())
     {
+    }
+
+    /// <summary>Creates a client with the given verifier.</summary>
+    /// <param name="options">Where bw is and how long a call may take.</param>
+    /// <param name="verifier">Decides whether the file may be run.</param>
+    internal BwCli(BwCliOptions options, IExecutableVerifier verifier)
+    {
+        ArgumentNullException.ThrowIfNull(verifier);
+        this.verifier = verifier;
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrEmpty(options.ExecutablePath);
 
@@ -191,9 +203,9 @@ public sealed class BwCli : IBwCli
         return result.Stdout;
     }
 
-    private ProcessStartInfo CreateStartInfo(IReadOnlyList<string> arguments, Dictionary<string, string>? environment)
+    private static ProcessStartInfo CreateStartInfo(string executable, IReadOnlyList<string> arguments, Dictionary<string, string>? environment)
     {
-        var startInfo = new ProcessStartInfo(options.ExecutablePath)
+        var startInfo = new ProcessStartInfo(executable)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -223,7 +235,31 @@ public sealed class BwCli : IBwCli
 
     private async Task<BwResult> RunAsync(IReadOnlyList<string> arguments, Dictionary<string, string>? environment, CancellationToken cancellationToken)
     {
-        using var process = new Process { StartInfo = CreateStartInfo(arguments, environment) };
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(options.Timeout);
+
+        // The link's final target is what gets checked and what gets started.
+        var executable = ExecutableFile.Resolve(options.ExecutablePath)
+            ?? throw new BwCliException(BwErrorKind.UntrustedExecutable);
+        bool trusted;
+        try
+        {
+            // The check may fetch revocation data over the network; it runs off the caller's
+            // thread and within the same time limit as the call.
+            trusted = await Task.Run(() => verifier.IsTrusted(executable), CancellationToken.None).WaitAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new BwCliException(BwErrorKind.TimedOut);
+        }
+
+        if (!trusted)
+        {
+            throw new BwCliException(BwErrorKind.UntrustedExecutable);
+        }
+
+        using var process = new Process { StartInfo = CreateStartInfo(executable, arguments, environment) };
         try
         {
             _ = process.Start();
@@ -236,9 +272,6 @@ public sealed class BwCli : IBwCli
         process.StandardInput.Close();
         var stdout = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
         var stderr = process.StandardError.ReadToEndAsync(CancellationToken.None);
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(options.Timeout);
         try
         {
             await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);

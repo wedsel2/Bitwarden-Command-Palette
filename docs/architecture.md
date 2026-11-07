@@ -1,7 +1,7 @@
 # Architecture
 
-Target design. What exists today is the pipeline, the secret types and `BwCli`
-in `Core`, the fake `bw` for tests, and a placeholder extension that loads in
+Target design. What exists today is the pipeline, the secret types, `BwCli`
+and `BwLocator` with the signature check in `Core`, the fake `bw` for tests, and a placeholder extension that loads in
 Command Palette.
 See the [roadmap](roadmap.md) for the order of work and the
 [decision records](adr/README.md) for the reasoning.
@@ -45,7 +45,7 @@ conflict, security wins.
 | **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. No Bitwarden or Windows security logic. |
 | **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). |
 | **VaultIndex** | The searchable list of logins, without secrets, loaded at unlock and dropped at lock ([ADR 10](adr/0010-metadata-in-memory-secrets-per-action.md)). |
-| **BwCli** | Finds and verifies `bw.exe`, starts it with arguments that never contain a secret, parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). |
+| **BwCli** | Starts `bw.exe` only after checking its signature, with arguments that never contain a secret, and parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). `BwLocator` finds a signed `bw.exe` in the settings, the known install locations or `PATH` ([ADR 15](adr/0015-finding-and-verifying-bw.md)). |
 | **ClipboardService** | Puts a secret on the clipboard outside history and cloud sync, and clears it later if it is still ours ([ADR 11](adr/0011-clipboard-outside-history-cleared-if-unchanged.md)). |
 | **Secret types** | Wrap every secret so it cannot be printed or logged by accident ([ADR 13](adr/0013-secret-types-and-canary-tests.md)). |
 

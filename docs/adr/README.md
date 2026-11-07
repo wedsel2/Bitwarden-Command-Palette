@@ -20,6 +20,7 @@ the old one.
 | [12](0012-the-extension-unlocks-it-never-logs-in.md) | The extension unlocks; logging in stays with the user | Accepted |
 | [13](0013-secret-types-and-canary-tests.md) | Secrets are types that cannot be printed, and canary tests prove nothing leaks | Accepted |
 | [14](0014-windows-sdk-build-tools-as-licence-exception.md) | Microsoft's Windows SDK build tools are the one exception to the open-source rule | Accepted |
+| [15](0015-finding-and-verifying-bw.md) | How bw.exe is found and how its signature is checked | Proposed |
 
 New records use the same sections: Context, Decision, Alternatives considered,
 Consequences.

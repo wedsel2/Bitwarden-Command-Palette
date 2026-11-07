@@ -2,6 +2,8 @@
   <!-- Session, vault and clipboard logic. No UI references, so it is fully unit-testable. -->
   <PropertyGroup>
     <RootNamespace>BitwardenCommandPalette.Core</RootNamespace>
+    <!-- The LibraryImport source generator for WinVerifyTrust emits pointer code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
