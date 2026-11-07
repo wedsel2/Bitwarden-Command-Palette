@@ -31,6 +31,8 @@ extension project exists (roadmap phase 5).
 | `nuget.config` | nuget.org as the only package source |
 | `dotnet-tools.json` | Pinned versions of the SonarQube scanner and the licence checker |
 | `allowed-licenses.json` | Licences a dependency may have |
+| `license-overrides.json` | Open-source licences the checker cannot read, per exact version |
+| `license-exceptions.json` | Packages exempt from the licence rule (only Windows SDK build tools, ADR 14) |
 | `renovate.json` | Dependency update policy |
 | `.releaserc.json` | semantic-release configuration |
 
@@ -51,9 +53,16 @@ A change cannot be merged unless:
 
 ### Open source only
 
-Every package the build restores is under an OSI licence, and CI enforces it.
+Every package the build restores is under an OSI licence, and CI enforces it,
+with one named exception: Microsoft's Windows SDK build tools, which an MSIX
+package cannot be built without and which ship nothing in the extension
+([ADR 14](adr/0014-windows-sdk-build-tools-as-licence-exception.md)).
 SonarAnalyzer.CSharp is deliberately not referenced: since November 2024 it is
 under the Sonar Source-Available License, which is not open source.
+
+The Command Palette layer (`src/BitwardenCommandPalette.Extension`) is excluded
+from SonarQube coverage: it holds pages and commands only, and all logic that
+needs tests lives in Core (ADR 8).
 
 SonarQube Cloud is an external service, like GitHub itself. Its scanner is
 LGPL-3.0, but during the CI run it downloads Sonar's own analyzers, which are

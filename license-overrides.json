@@ -1,0 +1,8 @@
+[
+  {
+    "Id": "Microsoft.Windows.CsWinRT",
+    "Version": "2.3.1",
+    "License": "MIT",
+    "LicenseUrl": "https://github.com/microsoft/CsWinRT/blob/master/LICENSE"
+  }
+]
