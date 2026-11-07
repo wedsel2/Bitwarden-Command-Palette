@@ -34,9 +34,17 @@ public sealed partial class BitwardenExtension : IExtension, IDisposable
         _ => null,
     };
 
+    private int _isDisposed;
+
     /// <inheritdoc />
+    /// <remarks>The host disposes the extension and Program does too on exit; only the first call acts.</remarks>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
+        {
+            return;
+        }
+
         _provider.Dispose();
         _disposed.Set();
     }

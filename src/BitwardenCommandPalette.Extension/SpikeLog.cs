@@ -57,6 +57,14 @@ internal static class SpikeLog
             {
                 // Same.
             }
+            catch (NotSupportedException)
+            {
+                // Same. These run on the SystemEvents thread, where an unhandled exception ends the process.
+            }
+            catch (ArgumentException)
+            {
+                // Same.
+            }
         }
     }
 }

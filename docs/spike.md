@@ -48,13 +48,19 @@ should turn on. Then:
 
 ```powershell
 dotnet build src\BitwardenCommandPalette.Extension -c Debug -p:Platform=x64
-Add-AppxPackage -Register "src\BitwardenCommandPalette.Extension\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\AppxManifest.xml"
+Add-AppxPackage -Register (Resolve-Path "src\BitwardenCommandPalette.Extension\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\AppxManifest.xml").Path
 ```
 
 In Command Palette run **Reload**, then open **Bitwarden**. Lock Windows
 (Win+L) and unlock, put the PC to sleep and wake it, leave it idle for an hour,
-and open the page again in between. The log is at
-`%LOCALAPPDATA%\BitwardenCommandPalette\spike.log` and on the page itself.
+and open the page again in between. The newest entries show on the page. The
+full log is a file; because Windows redirects a packaged app's writes to
+AppData into the package's own folder, find it with:
+
+```powershell
+Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter spike.log -ErrorAction SilentlyContinue |
+  Where-Object FullName -like "*BitwardenCommandPalette*"
+```
 Remove the test package afterwards with
 `Get-AppxPackage wedsel2.BitwardenCommandPalette | Remove-AppxPackage`.
 

@@ -19,7 +19,8 @@ internal sealed partial class SpikePage : ListPage
 
     public override IListItem[] GetItems()
     {
-        SpikeLog.Write("page opened");
+        // Logged off the render path so opening the page never waits on disk I/O.
+        _ = Task.Run(() => SpikeLog.Write("page opened"));
         return
         [
             new ListItem(new NoOpCommand())
