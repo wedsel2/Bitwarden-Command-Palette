@@ -88,12 +88,19 @@ public sealed class SessionCanaryTests
     }
 
     [Fact]
-    public void SystemLockEventsSubscribesAndUnsubscribes()
+    public void SystemLockEventsSubscribesAndUnsubscribesTwiceWithoutError()
     {
-        var events = new SystemLockEvents();
-        events.LockRequested += (_, _) => { };
+        var raised = 0;
 
-        events.Dispose();
-        events.Dispose();
+        var error = Record.Exception(() =>
+        {
+            var events = new SystemLockEvents();
+            events.LockRequested += (_, _) => raised++;
+            events.Dispose();
+            events.Dispose();
+        });
+
+        Assert.Null(error);
+        Assert.Equal(0, raised);
     }
 }
