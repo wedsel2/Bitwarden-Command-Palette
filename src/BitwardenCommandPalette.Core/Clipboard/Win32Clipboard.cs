@@ -9,11 +9,11 @@ namespace BitwardenCommandPalette.Core.Clipboard;
 /// equivalents of its <c>IsAllowedInHistory</c> and <c>IsRoamable</c> options (ADR 11).
 /// </summary>
 /// <remarks>
-/// The text is copied straight from the string into the clipboard's memory, without a managed
-/// copy, and compared there; a buffer that could not be handed to the clipboard is zeroed
-/// before it is freed.
+/// The text is written character by character from the string into the clipboard's memory,
+/// without a managed copy, and compared there the same way; a buffer that could not be handed
+/// to the clipboard is zeroed before it is freed.
 /// </remarks>
-internal sealed unsafe partial class Win32Clipboard : IClipboard
+internal sealed partial class Win32Clipboard : IClipboard
 {
     /// <summary>A DWORD 0 in this format keeps the content out of clipboard history.</summary>
     internal const string HistoryFormatName = "CanIncludeInClipboardHistory";
@@ -122,16 +122,22 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
 
         try
         {
-            // Text too long for a span cannot be ours; never let its size throw.
-            var length = GlobalSize(handle) / sizeof(char);
-            if (length > int.MaxValue)
+            // The text ends at the first NUL or at the end of the block, whichever comes first.
+            var capacity = GlobalSize(handle) / sizeof(char);
+            if (capacity < (nuint)text.Length)
             {
                 return false;
             }
 
-            var chars = new ReadOnlySpan<char>((void*)data, (int)length);
-            var end = chars.IndexOf('\0');
-            return (end < 0 ? chars : chars[..end]).SequenceEqual(text);
+            for (var i = 0; i < text.Length; i++)
+            {
+                if ((char)Marshal.ReadInt16(data, i * sizeof(char)) != text[i])
+                {
+                    return false;
+                }
+            }
+
+            return capacity == (nuint)text.Length || Marshal.ReadInt16(data, text.Length * sizeof(char)) == 0;
         }
         finally
         {
@@ -164,17 +170,20 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
         }
     }
 
-    private static void SetDword(uint format, uint value) =>
-        SetData(format, sizeof(uint), buffer => new Span<uint>((void*)buffer, 1)[0] = value);
+    private static void SetDword(uint format, int value) =>
+        SetData(format, sizeof(int), buffer => Marshal.WriteInt32(buffer, value));
 
     private static void SetUnicodeText(string text)
     {
         var length = checked((text.Length + 1) * sizeof(char));
         SetData(UnicodeText, length, buffer =>
         {
-            var target = new Span<char>((void*)buffer, text.Length + 1);
-            text.AsSpan().CopyTo(target);
-            target[^1] = '\0';
+            for (var i = 0; i < text.Length; i++)
+            {
+                Marshal.WriteInt16(buffer, i * sizeof(char), text[i]);
+            }
+
+            Marshal.WriteInt16(buffer, text.Length * sizeof(char), 0);
         });
     }
 
@@ -203,7 +212,10 @@ internal sealed unsafe partial class Win32Clipboard : IClipboard
             buffer = GlobalLock(handle);
             if (buffer != 0)
             {
-                new Span<byte>((void*)buffer, length).Clear();
+                for (var offset = 0; offset < length; offset++)
+                {
+                    Marshal.WriteByte(buffer, offset, 0);
+                }
                 _ = GlobalUnlock(handle);
             }
 
