@@ -1,0 +1,17 @@
+{
+    "arguments":  [
+                      "get",
+                      "totp",
+                      "00000000-0000-4000-8000-000000000008",
+                      "--response",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  1,
+    "durationMs":  3399,
+    "stdoutFormat":  "json",
+    "stdout":  "{\"success\":false,\"message\":\"Not found.\"}",
+    "stderr":  ""
+}

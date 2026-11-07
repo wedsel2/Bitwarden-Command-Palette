@@ -1,0 +1,13 @@
+{
+    "arguments":  [
+                      "status"
+                  ],
+    "environment":  {
+
+                    },
+    "exitCode":  0,
+    "durationMs":  2903,
+    "stdoutFormat":  "json",
+    "stdout":  "{\"serverUrl\":null,\"lastSync\":null,\"status\":\"unauthenticated\"}",
+    "stderr":  ""
+}

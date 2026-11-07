@@ -62,7 +62,8 @@ under the Sonar Source-Available License, which is not open source.
 
 The Command Palette layer (`src/BitwardenCommandPalette.Extension`) is excluded
 from SonarQube coverage: it holds pages and commands only, and all logic that
-needs tests lives in Core (ADR 8).
+needs tests lives in Core (ADR 8). So is `tools/`: scripts the maintainer runs
+by hand, such as the `bw` recording script, which is not part of the product.
 
 SonarQube Cloud is an external service, like GitHub itself. Its scanner is
 LGPL-3.0, but during the CI run it downloads Sonar's own analyzers, which are

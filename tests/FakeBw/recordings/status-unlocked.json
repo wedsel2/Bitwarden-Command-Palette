@@ -1,0 +1,13 @@
+{
+    "arguments":  [
+                      "status"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  0,
+    "durationMs":  2868,
+    "stdoutFormat":  "json",
+    "stdout":  "{\"serverUrl\":\"https://vault.bitwarden.eu\",\"lastSync\":\"2026-01-01T00:00:00.000Z\",\"userEmail\":\"user@example.com\",\"userId\":\"00000000-0000-4000-8000-000000000001\",\"status\":\"unlocked\"}",
+    "stderr":  ""
+}

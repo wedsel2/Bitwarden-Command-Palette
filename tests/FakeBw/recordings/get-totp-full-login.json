@@ -1,0 +1,16 @@
+{
+    "arguments":  [
+                      "get",
+                      "totp",
+                      "00000000-0000-4000-8000-000000000005",
+                      "--nointeraction"
+                  ],
+    "environment":  {
+                        "BW_SESSION":  "[session]"
+                    },
+    "exitCode":  1,
+    "durationMs":  3810,
+    "stdoutFormat":  "empty",
+    "stdout":  "",
+    "stderr":  "Premium status is required to use this feature."
+}
