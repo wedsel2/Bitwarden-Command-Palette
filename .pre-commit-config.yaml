@@ -1,0 +1,44 @@
+default_install_hook_types: [pre-commit, commit-msg]
+
+# Written by dotnet itself; reformatting them makes restore rewrite them again.
+exclude: (^|/)(packages\.lock\.json|dotnet-tools\.json)$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-xml
+        files: \.(props|csproj|slnx|config)$
+        types: [file]
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # Needs the .NET SDK from global.json. CI skips it here and runs it on Windows.
+  - repo: local
+    hooks:
+      - id: dotnet-format
+        name: dotnet format
+        entry: dotnet format BitwardenCommandPalette.slnx --verify-no-changes
+        language: system
+        types: [c#]
+        pass_filenames: false
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]

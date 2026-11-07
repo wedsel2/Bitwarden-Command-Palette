@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BitwardenCommandPalette.Core/BitwardenCommandPalette.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BitwardenCommandPalette.Core.Tests/BitwardenCommandPalette.Core.Tests.csproj" />
+  </Folder>
+</Solution>

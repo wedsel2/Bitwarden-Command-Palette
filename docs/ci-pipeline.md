@@ -1,0 +1,99 @@
+# CI/CD pipeline
+
+How the pipeline works and what has to be configured outside the repository.
+
+## Flow
+
+```text
+pull request / push to main
+ ├─ lint          pre-commit: file hygiene, actionlint, Gitleaks
+ ├─ test          Windows: locked restore + NuGet audit → dotnet format →
+ │                build (analyzers as errors) → tests + coverage → SonarQube Cloud
+ │                → dependency licence check
+ └─ scan-source   Trivy on the NuGet lock files
+        │ all three must pass, main only
+        ▼
+    release       semantic-release → tag and GitHub release
+
+mondays           Renovate update pull requests (hosted app, not a workflow)
+```
+
+The signed MSIX, its SBOM and build provenance join the release job once the
+extension project exists (roadmap phase 5).
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/ci.yml` | Lint, test, scan, release |
+| `.pre-commit-config.yaml` | Hooks shared by local commits and the lint job |
+| `global.json` | Pins the .NET SDK and selects Microsoft Testing Platform |
+| `Directory.Build.props` | Analyzer, lock file, audit and determinism settings for every project |
+| `Directory.Packages.props` | The only place package versions are set |
+| `nuget.config` | nuget.org as the only package source |
+| `dotnet-tools.json` | Pinned versions of the SonarQube scanner and the licence checker |
+| `allowed-licenses.json` | Licences a dependency may have |
+| `renovate.json` | Dependency update policy |
+| `.releaserc.json` | semantic-release configuration |
+
+## Gates
+
+A change cannot be merged unless:
+
+- all pre-commit hooks pass, including Gitleaks,
+- every NuGet lock file is current (`RestoreLockedMode` in CI),
+- no dependency, direct or transitive, has a known high or critical
+  vulnerability (NuGet audit at restore, and Trivy on the lock files),
+- `dotnet format` reports no changes,
+- the build has no warnings, with all .NET analyzers enabled (`latest-all`),
+- tests pass with at least 80% line coverage,
+- the SonarQube Cloud quality gate passes,
+- every dependency, including build and test packages, has a licence listed in
+  `allowed-licenses.json`.
+
+### Open source only
+
+Every package the build restores is under an OSI licence, and CI enforces it.
+SonarAnalyzer.CSharp is deliberately not referenced: since November 2024 it is
+under the Sonar Source-Available License, which is not open source.
+
+SonarQube Cloud is an external service, like GitHub itself. Its scanner is
+LGPL-3.0, but during the CI run it downloads Sonar's own analyzers, which are
+source-available. Nothing from it ends up in the build output or the product.
+
+## Releasing
+
+Releases are driven by commit messages on `main`:
+
+| Commit type | Result |
+|---|---|
+| `fix: ...` | Patch release |
+| `feat: ...` | Minor release |
+| `feat!: ...` or a `BREAKING CHANGE:` footer | Major release |
+| `docs:`, `chore:`, `ci:`, `test:`, `refactor:` | No release |
+
+## One-time setup outside the repository
+
+These settings are not stored in the repository and must be redone if it is recreated.
+
+1. **SonarQube Cloud**: import the repository, switch the analysis method from
+   Automatic Analysis to CI-based, and add the token as the `SONAR_TOKEN`
+   Actions secret. Check that the organisation (`wedsel2`) and project key
+   (`wedsel2_Bitwarden-Command-Palette`) match the workflow.
+2. **Renovate**: install the Mend Renovate GitHub App on the repository.
+3. **Security settings** (Settings → Advanced Security): enable Dependabot
+   alerts, CodeQL default setup (C# and Actions), secret scanning and push
+   protection. Leave Dependabot version and security updates off.
+4. **Branch ruleset for `main`**: require a pull request and the status checks
+   `lint`, `test` and `scan-source`; block force pushes.
+5. **Merging**: allow squash merging with the pull request title as the commit
+   message, so the Conventional Commit type decides the release. Enable
+   auto-merge for Renovate.
+
+## Local use
+
+```bash
+dotnet tool restore
+uvx pre-commit install
+dotnet build
+dotnet test --coverlet --coverlet-threshold 80
+uvx pre-commit run --all-files
+```

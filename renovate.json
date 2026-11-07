@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    ":enablePreCommit",
+    "customManagers:githubActionsVersions"
+  ],
+  "timezone": "Europe/Amsterdam",
+  "schedule": ["on monday"],
+  "osvVulnerabilityAlerts": true,
+  "minimumReleaseAge": "3 days",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["on monday"],
+    "automerge": true
+  },
+  "packageRules": [
+    {
+      "description": "Merge non-major updates once CI is green; majors wait for review.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "A new SDK feature band can change analyzer results; review it.",
+      "matchDepNames": ["dotnet-sdk"],
+      "matchUpdateTypes": ["minor", "major"],
+      "automerge": false
+    }
+  ]
+}

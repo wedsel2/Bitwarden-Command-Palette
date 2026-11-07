@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # The action installs its own default Trivy otherwise, which Renovate cannot see.
+  # renovate: datasource=github-releases depName=aquasecurity/trivy
+  TRIVY_VERSION: v0.76.2
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      # Same hooks as local commits. dotnet format runs in the test job, on Windows.
+      - run: uvx pre-commit run --all-files --show-diff-on-failure
+        env:
+          SKIP: dotnet-format
+
+  test:
+    # MSIX, WinAppSDK and the Windows TFM need a Windows runner.
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # SonarQube needs history for blame and new-code detection
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      # Skipped when the token is unavailable (before setup, or on fork PRs).
+      - name: Start SonarQube analysis
+        if: env.SONAR_TOKEN != ''
+        run: >
+          dotnet sonarscanner begin
+          /k:wedsel2_Bitwarden-Command-Palette
+          /o:wedsel2
+          /d:sonar.host.url=https://sonarcloud.io
+          /d:sonar.token="$env:SONAR_TOKEN"
+          /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.*.xml"
+          /d:sonar.qualitygate.wait=true
+      # CI=true makes restore run in locked mode: a lock file out of date fails here,
+      # as does a known high or critical vulnerability (NuGet audit).
+      - run: dotnet restore
+      - run: dotnet format BitwardenCommandPalette.slnx --verify-no-changes --no-restore
+      - run: dotnet build -c Release --no-restore
+      - name: Test with coverage (80% line floor)
+        run: >
+          dotnet test -c Release --no-build
+          --results-directory TestResults
+          --report-xunit-trx
+          --coverlet --coverlet-output-format opencover
+          --coverlet-threshold 80
+      - name: Finish SonarQube analysis
+        if: env.SONAR_TOKEN != ''
+        run: dotnet sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"
+      - name: Check dependency licences
+        run: dotnet nuget-license -i BitwardenCommandPalette.slnx -t -a allowed-licenses.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: test-results
+          path: TestResults/
+
+  scan-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Scan NuGet lock files
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  release:
+    needs: [lint, test, scan-source]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # tag and GitHub release
+      issues: write # semantic-release comments on released issues
+      pull-requests: write
+    env:
+      # renovate: datasource=npm depName=semantic-release
+      SEMANTIC_RELEASE_VERSION: 25.0.9
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # Tags and notes only for now; the signed MSIX, SBOM and provenance are
+      # attached once the extension project exists (roadmap phase 5).
+      - name: Create release if commits warrant one
+        run: npx --yes "semantic-release@$SEMANTIC_RELEASE_VERSION"
