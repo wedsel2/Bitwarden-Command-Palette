@@ -71,6 +71,32 @@ public sealed class Win32ClipboardTests : IDisposable
     }
 
     [Fact]
+    public void AClipboardHeldByAnotherApplicationIsRefusedWithoutTheText()
+    {
+        ClipboardException error;
+        using (new ClipboardHolder())
+        {
+            error = Assert.Throws<ClipboardException>(() => clipboard.SetText(Text));
+            Assert.Throws<ClipboardException>(() => clipboard.ClearIfHolds(Text));
+        }
+
+        Assert.Contains("open the clipboard", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(Text, error.ToString(), StringComparison.Ordinal);
+        Assert.False(Win32Clipboard.HoldsText(Text));
+    }
+
+    [Fact]
+    public void AClipboardReleasedWithinTheRetriesIsUsed()
+    {
+        using (new ClipboardHolder(TimeSpan.FromMilliseconds(120)))
+        {
+            clipboard.SetText(Text);
+        }
+
+        Assert.True(Win32Clipboard.HoldsText(Text));
+    }
+
+    [Fact]
     public void ANewCopyReplacesThePreviousText()
     {
         clipboard.SetText(Text);

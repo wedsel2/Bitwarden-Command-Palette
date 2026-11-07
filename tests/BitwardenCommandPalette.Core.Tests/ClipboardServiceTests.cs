@@ -255,6 +255,25 @@ public sealed class ClipboardServiceTests : IDisposable
     }
 
     [Fact]
+    public void ThePublicConstructorTouchesTheClipboardOnlyWhenUsed()
+    {
+        using var real = new ClipboardService();
+
+        Assert.Equal(ClipboardService.DefaultClearDelay, real.ClearDelay);
+        real.ClearIfOurs();
+    }
+
+    [Fact]
+    public void ClipboardExceptionKeepsItsMessageAndCause()
+    {
+        var cause = new InvalidOperationException("cause");
+
+        Assert.False(string.IsNullOrEmpty(new ClipboardException().Message));
+        Assert.Equal("busy", new ClipboardException("busy").Message);
+        Assert.Same(cause, new ClipboardException("busy", cause).InnerException);
+    }
+
+    [Fact]
     public void TheConstructorRefusesNull()
     {
         Assert.Throws<ArgumentNullException>(() => new ClipboardService(null!, time));
