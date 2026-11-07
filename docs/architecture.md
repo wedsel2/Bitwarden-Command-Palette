@@ -1,7 +1,8 @@
 # Architecture
 
-Target design. What exists today is the pipeline, an empty `Core` library and
-a placeholder extension that loads in Command Palette.
+Target design. What exists today is the pipeline, the secret types and `BwCli`
+in `Core`, the fake `bw` for tests, and a placeholder extension that loads in
+Command Palette.
 See the [roadmap](roadmap.md) for the order of work and the
 [decision records](adr/README.md) for the reasoning.
 
@@ -131,3 +132,20 @@ executable replays scripted answers and records how it was called, so tests can
 check what was passed in arguments and environment. Canary tests run every flow
 with known fake secrets and fail if one appears in a log line, an exception
 message or a child's arguments ([ADR 13](adr/0013-secret-types-and-canary-tests.md)).
+
+The fake (`tests/FakeBw`, built as `bw.exe` next to the tests) reads a scenario
+file named by `FAKEBW_SCENARIO`: rules that match the exact arguments and answer
+with one of the recordings in `tests/FakeBw/recordings/` or a made-up response.
+It logs each call's arguments, `BW_SESSION` and the variable named by
+`--passwordenv`. Because that variable is process-wide, tests that start it run
+one at a time.
+
+`BwCli` behaviour that follows from the recordings ([spike](spike.md)): failures
+are classified by bw's known messages into `BwErrorKind`, each with a fixed
+message of ours; `NotFound` means the item or that field of it is missing, so
+callers decide from `VaultIndex` which actions to offer; item lookups refuse
+anything but a GUID; a password is returned exactly as bw prints it, a TOTP code
+trimmed; and `bw list items` is read from a `JsonDocument`, so passwords and TOTP
+secrets in it are only checked for presence and never become strings of their
+own. The raw output string still holds them until it is collected, as ADR 7
+accepts.

@@ -8,7 +8,7 @@ intentionally less detailed.
 | 0 | Pipeline | Solution skeleton, CI with all gates, Renovate, semantic-release | Done |
 | 1 | Design | Architecture doc, threat model and decision records, `CLAUDE.md`, roadmap | Done |
 | 2 | Spike | A hello-world extension installed in Command Palette; the questions below answered; [findings](spike.md) written; Proposed records settled | In progress: extension builds, CLI checked and recorded; live test open |
-| 3 | Core | Remove the spike diagnostics (`SpikeLog`, `Microsoft.Win32.SystemEvents` unless lock events need it); `BwCli`, `SessionManager` with timers and lock events, `VaultIndex`, `ClipboardService`, secret types, fake `bw`, canary tests | |
+| 3 | Core | Remove the spike diagnostics (`SpikeLog`, `Microsoft.Win32.SystemEvents` unless lock events need it); `BwCli`, `SessionManager` with timers and lock events, `VaultIndex`, `ClipboardService`, secret types, fake `bw`, canary tests | In progress: secret types, fake `bw`, `BwCli` and its canary tests done; next `bw.exe` discovery and signature check |
 | 4 | Extension | Unlock form, search list, per-login actions (copy username, password or TOTP), lock command, settings page | |
 | 5 | Release | Signed MSIX with SBOM and provenance on GitHub Releases, install guide, README with the threat model | |
 | 6 | Later | Each needs a decision record first: open URI, WinGet listing, password generation, Windows Hello | |

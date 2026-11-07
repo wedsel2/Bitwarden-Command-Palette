@@ -113,7 +113,9 @@ also accepts a search term, so the extension always passes the item's ID.
 Confirmed by the recording: unlock works through `--passwordenv`, every list
 and get works with only `BW_SESSION` in the child's environment, an invalid or
 pre-lock session key gives `Vault is locked.`, and `status` reports `locked`
-for a key used after `bw lock`.
+for a key used after `bw lock`. *Open: `bw lock` was only recorded with
+`BW_SESSION` set. The start-up lock runs without one; that it still ends an
+earlier session needs a check in the next recording.*
 
 **8. Signature and builds.** Both Windows builds, `bw-windows` and
 `bw-oss-windows`, are Authenticode-signed by **Bitwarden Inc.** (DigiCert
