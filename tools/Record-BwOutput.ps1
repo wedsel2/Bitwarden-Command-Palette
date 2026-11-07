@@ -38,11 +38,18 @@ param(
     [string] $BwPath,
     [string] $ServerUrl,
     [securestring] $MasterPassword,
-    [string] $OutputDirectory = (Join-Path $PSScriptRoot '..\tests\FakeBw\recordings')
+    [string] $OutputDirectory
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Set here, not as the parameter's default: Windows PowerShell leaves
+# $PSScriptRoot empty in parameter defaults when started with -File.
+if (-not $OutputDirectory) {
+    $scriptFolder = Split-Path -Parent $MyInvocation.MyCommand.Definition
+    $OutputDirectory = Join-Path $scriptFolder '..\tests\FakeBw\recordings'
+}
 
 $FixturePrefix = 'BWCP Fixture'
 $PasswordVariable = 'BWCP_MASTER_PASSWORD'
