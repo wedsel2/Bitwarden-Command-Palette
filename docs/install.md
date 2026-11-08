@@ -60,15 +60,18 @@ download for your processor (Settings, System, About, System type):
 
 and `BitwardenCommandPalette-signing.cer`.
 
-Check that the package was built by this repository's pipeline, from the
-commit the release names. With the [GitHub CLI](https://cli.github.com/):
+Check that the package was built by this repository's release workflow from
+`main`. With the [GitHub CLI](https://cli.github.com/):
 
 ```bash
-gh attestation verify BitwardenCommandPalette-<version>-x64.msix --repo wedsel2/Bitwarden-Command-Palette
+gh attestation verify BitwardenCommandPalette-<version>-x64.msix --repo wedsel2/Bitwarden-Command-Palette --signer-workflow wedsel2/Bitwarden-Command-Palette/.github/workflows/ci.yml --source-ref refs/heads/main
 ```
 
-Without it, compare the file's hash with the line in the release's
-`SHA256SUMS.txt`:
+Its output names the commit the package was built from.
+
+Without the GitHub CLI you can only check that the download is intact, not
+where it came from: compare the file's hash with the line in the release's
+`SHA256SUMS.txt`.
 
 ```bash
 certutil -hashfile BitwardenCommandPalette-<version>-x64.msix SHA256
@@ -94,9 +97,14 @@ in the folder you downloaded to:
 Import-Certificate -FilePath .\BitwardenCommandPalette-signing.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 ```
 
-Trusted People lets Windows install packages signed with this certificate. It
-does not make it a certificate authority: it cannot vouch for websites or other
-software.
+Trusted People makes Windows trust anything signed with this certificate's key,
+not only this package: other programs and scripts too. It does not make it a
+certificate authority, so it cannot vouch for websites or for other
+certificates. A self-signed certificate cannot be revoked, so if its key were
+ever leaked, the project would announce it in a release and on the
+[releases page](https://github.com/wedsel2/Bitwarden-Command-Palette/releases),
+and you would remove the certificate as under [Uninstalling](#uninstalling).
+This is why the SignPath-signed releases will replace it.
 
 ## 5. Install
 
