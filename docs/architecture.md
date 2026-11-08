@@ -43,7 +43,7 @@ conflict, security wins.
 | Component | Responsibility |
 |---|---|
 | **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. No Bitwarden or Windows security logic. |
-| **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). Owns `VaultIndex` and runs search and copy itself, so the extension never holds the key, the index or a fetched secret. The Windows events come through `ILockEvents`; `SystemLockEvents` reads them from `SystemEvents`. |
+| **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). Owns `VaultIndex` and runs search and copy itself, so the extension never holds the key, the index or a fetched secret. The Windows events come through `ILockEvents`; `SystemLockEvents` reads them from `SystemEvents`, and locks when the display turns off, which also covers sleep on Modern Standby PCs ([ADR 16](adr/0016-lock-when-the-display-turns-off.md)). |
 | **VaultIndex** | The searchable list of logins, without secrets, loaded at unlock and dropped at lock ([ADR 10](adr/0010-metadata-in-memory-secrets-per-action.md)). |
 | **BwCli** | Starts `bw.exe` only after checking its signature, with arguments that never contain a secret, and parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). `BwLocator` finds a signed `bw.exe` in the settings, the known install locations or `PATH` ([ADR 15](adr/0015-finding-and-verifying-bw.md)). |
 | **ClipboardService** | Puts a secret on the clipboard outside history and cloud sync, and clears it later if it is still ours ([ADR 11](adr/0011-clipboard-outside-history-cleared-if-unchanged.md)). Only its `Win32Clipboard` touches the Windows clipboard. |
@@ -109,7 +109,7 @@ moves back more than 5 seconds (more than a time sync correction) locks it.
 ### Lock
 
 Triggered by the idle timer (default 10 minutes), the absolute timer (default
-60 minutes), Windows lock, sleep or sign-out, the lock command, the extension
+60 minutes), Windows lock, sleep or sign-out, the display turning off, the lock command, the extension
 shutting down, or `bw` reporting the vault locked:
 
 1. `SessionManager` drops the key; `VaultIndex` drops the metadata.

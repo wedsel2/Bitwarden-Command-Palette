@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using BitwardenCommandPalette.Core.Bw;
 using BitwardenCommandPalette.Core.Session;
@@ -90,17 +91,72 @@ public sealed class SessionCanaryTests
     [Fact]
     public void SystemLockEventsSubscribesAndUnsubscribesTwiceWithoutError()
     {
-        var raised = 0;
+        var watching = false;
 
+        // Windows may call back at once with the current display state; on a headless runner
+        // that can be "off", so the number of requests is not asserted here.
         var error = Record.Exception(() =>
         {
             var events = new SystemLockEvents();
-            events.LockRequested += (_, _) => raised++;
+            events.LockRequested += (_, _) => { };
+            watching = events.IsWatchingDisplay;
             events.Dispose();
             events.Dispose();
         });
 
         Assert.Null(error);
-        Assert.Equal(0, raised);
+        Assert.True(watching);
+    }
+
+    [Theory]
+    [InlineData(0, LockReason.DisplayOff)]
+    [InlineData(1, null)]
+    [InlineData(2, null)]
+    public void OnlyADisplayThatTurnsOffLocks(int state, LockReason? expected)
+    {
+        Assert.Equal(expected, SystemLockEvents.ReasonForDisplayState(state));
+    }
+
+    [Fact]
+    public void ADisplayOffNotificationIsReadFromThePowerSetting()
+    {
+        using var setting = new PowerSetting(DisplayStateGuid, length: 4, data: 0);
+
+        Assert.Equal(LockReason.DisplayOff, SystemLockEvents.ReasonForPowerSetting(PowerSettingChange, setting.Pointer));
+    }
+
+    [Fact]
+    public void OtherNotificationsDoNotLock()
+    {
+        using var on = new PowerSetting(DisplayStateGuid, length: 4, data: 1);
+        using var otherSetting = new PowerSetting(Guid.NewGuid(), length: 4, data: 0);
+        using var tooShort = new PowerSetting(DisplayStateGuid, length: 1, data: 0);
+        using var off = new PowerSetting(DisplayStateGuid, length: 4, data: 0);
+
+        Assert.Null(SystemLockEvents.ReasonForPowerSetting(PowerSettingChange, on.Pointer));
+        Assert.Null(SystemLockEvents.ReasonForPowerSetting(PowerSettingChange, otherSetting.Pointer));
+        Assert.Null(SystemLockEvents.ReasonForPowerSetting(PowerSettingChange, tooShort.Pointer));
+        Assert.Null(SystemLockEvents.ReasonForPowerSetting(PowerSettingChange, 0));
+        Assert.Null(SystemLockEvents.ReasonForPowerSetting(0x0004, off.Pointer));
+    }
+
+    private const uint PowerSettingChange = 0x8013;
+
+    private static readonly Guid DisplayStateGuid = new("6FE69556-704A-47A0-8F24-C28D936FDA47");
+
+    /// <summary>A POWERBROADCAST_SETTING in unmanaged memory, as Windows passes it.</summary>
+    private sealed class PowerSetting : IDisposable
+    {
+        public PowerSetting(Guid guid, int length, int data)
+        {
+            Pointer = Marshal.AllocHGlobal(24);
+            Marshal.Copy(guid.ToByteArray(), 0, Pointer, 16);
+            Marshal.WriteInt32(Pointer, 16, length);
+            Marshal.WriteInt32(Pointer, 20, data);
+        }
+
+        public nint Pointer { get; }
+
+        public void Dispose() => Marshal.FreeHGlobal(Pointer);
     }
 }
