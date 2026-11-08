@@ -95,10 +95,12 @@ once, so a search on another thread never sees a half-loaded list.
 ### Copy
 
 1. The user picks a login and an action: copy username, password or TOTP.
-2. `SessionManager` checks both timers and `bw status`. If either says locked,
-   the unlock form comes back and the action runs after unlocking.
-3. Username comes from `VaultIndex`. Password and TOTP are fetched now with
-   `bw get password <id>` or `bw get totp <id>`, never earlier.
+2. `SessionManager` checks both timers. If either has passed, the vault locks
+   and the user unlocks it again.
+3. Username comes from `VaultIndex`, with no `bw` call. Password and TOTP are
+   fetched now with `bw get password <id>` or `bw get totp <id>`, never earlier;
+   if `bw get` reports the vault locked, the session locks
+   ([ADR 17](adr/0017-copy-relies-on-bw-gets-own-session-check.md)).
 4. `ClipboardService` copies it and schedules the clear. If the vault was locked,
    or a timeout passed, while `bw` was fetching, the value is discarded instead.
 

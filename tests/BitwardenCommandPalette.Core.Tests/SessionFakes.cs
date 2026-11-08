@@ -96,16 +96,18 @@ internal sealed class FakeCli : IBwCli
     }
 
     public Task<Secret> GetPasswordAsync(SessionKey session, string itemId, CancellationToken cancellationToken = default) =>
-        Get($"get password {itemId}", PasswordValue);
+        Get(session, $"get password {itemId}", PasswordValue);
 
     public Task<Secret> GetTotpAsync(SessionKey session, string itemId, CancellationToken cancellationToken = default) =>
-        Get($"get totp {itemId}", "123456");
+        Get(session, $"get totp {itemId}", "123456");
 
-    private Task<Secret> Get(string call, string value)
+    // Like the real CLI: a key that is not the current one, or a locked CLI, gives "Vault is locked."
+    private Task<Secret> Get(SessionKey session, string call, string value)
     {
         Calls.Add(call);
         DuringGet?.Invoke();
-        return FailGet is { } kind ? Task.FromException<Secret>(new BwCliException(kind)) : Task.FromResult(new Secret(value));
+        var kind = FailGet ?? (ReferenceEquals(session, Issued) && CliUnlocked ? null : BwErrorKind.VaultLocked);
+        return kind is { } failure ? Task.FromException<Secret>(new BwCliException(failure)) : Task.FromResult(new Secret(value));
     }
 }
 

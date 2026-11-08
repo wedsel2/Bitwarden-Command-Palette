@@ -312,8 +312,8 @@ public sealed class SessionManager : IAsyncDisposable
 
     /// <summary>
     /// Copies one field of a login through <see cref="IClipboardService"/>, after checking both
-    /// timeouts and <c>bw status</c> (ADR 9). A password or TOTP code is fetched now, never earlier
-    /// (ADR 10), and never returned to the caller.
+    /// timeouts (ADR 9). A password or TOTP code is fetched now, never earlier (ADR 10), and never
+    /// returned to the caller; <c>bw get</c> itself tells a session that is no longer valid (ADR 17).
     /// </summary>
     /// <param name="itemId">The login's ID, from a search result.</param>
     /// <param name="field">What to copy.</param>
@@ -355,13 +355,8 @@ public sealed class SessionManager : IAsyncDisposable
         Secret? secret;
         try
         {
-            var status = await cli.GetStatusAsync(session, cancellationToken).ConfigureAwait(false);
-            if (status.State != BwVaultState.Unlocked)
-            {
-                await LockAsync(LockReason.CliLocked, expected).ConfigureAwait(false);
-                return CopyOutcome.Locked;
-            }
-
+            // No separate bw status (ADR 17): bw get fails with VaultLocked for a key that is no
+            // longer valid, and a username needs no bw call at all.
             secret = field switch
             {
                 CopyField.Password => await cli.GetPasswordAsync(session, login.Id, cancellationToken).ConfigureAwait(false),

@@ -369,19 +369,19 @@ public sealed class SessionManagerTests : IAsyncDisposable
 
         Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Password, Token));
 
-        Assert.Equal(["status", $"get password {Id}"], cli.Calls);
+        Assert.Equal([$"get password {Id}"], cli.Calls);
         Assert.Equal([cli.PasswordValue], clipboard.Copied);
     }
 
     [Fact]
-    public async Task AUsernameComesFromTheIndexAfterAStatusCheck()
+    public async Task AUsernameComesFromTheIndexWithoutCallingBw()
     {
         await UnlockAsync();
         cli.Calls.Clear();
 
         Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, Token));
 
-        Assert.Equal(["status"], cli.Calls);
+        Assert.Empty(cli.Calls);
         Assert.Equal(["alice"], clipboard.Copied);
     }
 
@@ -431,6 +431,20 @@ public sealed class SessionManagerTests : IAsyncDisposable
         Assert.False(session.IsUnlocked);
         Assert.Equal([LockReason.CliLocked], locks);
         Assert.Empty(clipboard.Copied);
+    }
+
+    [Fact]
+    public async Task ACliLockedFromOutsideStillCopiesAUsernameThenLocksOnTheNextSecret()
+    {
+        // ADR 17: a username needs no bw call; the next password copy finds the vault locked.
+        await UnlockAsync();
+        cli.CliUnlocked = false;
+
+        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, Token));
+
+        Assert.Equal(["alice"], clipboard.Copied);
+        Assert.Equal([LockReason.CliLocked], locks);
     }
 
     [Theory]

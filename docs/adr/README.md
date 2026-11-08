@@ -22,6 +22,7 @@ the old one.
 | [14](0014-windows-sdk-build-tools-as-licence-exception.md) | Microsoft's Windows SDK build tools are the one exception to the open-source rule | Accepted |
 | [15](0015-finding-and-verifying-bw.md) | How bw.exe is found and how its signature is checked | Accepted |
 | [16](0016-lock-when-the-display-turns-off.md) | The vault locks when the display turns off | Accepted |
+| [17](0017-copy-relies-on-bw-gets-own-session-check.md) | A copy relies on bw get's own session check | Accepted |
 
 New records use the same sections: Context, Decision, Alternatives considered,
 Consequences.
