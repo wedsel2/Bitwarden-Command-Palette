@@ -24,9 +24,6 @@ public enum LockReason
     /// <summary>The computer went to sleep.</summary>
     Sleep,
 
-    /// <summary>The display turned off, as it does when a Modern Standby PC sleeps (ADR 16).</summary>
-    DisplayOff,
-
     /// <summary>The user is signing out or Windows is shutting down.</summary>
     SignOut,
 
@@ -38,6 +35,9 @@ public enum LockReason
 
     /// <summary>Unlocking failed after the session key was issued.</summary>
     UnlockFailed,
+
+    /// <summary>The display turned off, as it does when a Modern Standby PC sleeps (ADR 16).</summary>
+    DisplayOff,
 }
 
 /// <summary>Carries the reason for a lock.</summary>
@@ -92,19 +92,28 @@ public sealed partial class SystemLockEvents : ILockEvents
     /// <summary>Subscribes to the Windows session, power and display events.</summary>
     public SystemLockEvents()
     {
+        // The display subscription first: if it throws, nothing static refers to this object yet.
+        callback = OnPowerSetting;
+        subscribeParameters = Marshal.AllocHGlobal(2 * nint.Size);
+        try
+        {
+            Marshal.WriteIntPtr(subscribeParameters, Marshal.GetFunctionPointerForDelegate(callback));
+            Marshal.WriteIntPtr(subscribeParameters, nint.Size, 0);
+            if (PowerSettingRegisterNotification(in ConsoleDisplayState, DeviceNotifyCallback, subscribeParameters, out registration) != 0)
+            {
+                // The session events of ADR 9 still apply; IsWatchingDisplay says this one did not.
+                registration = 0;
+            }
+        }
+        catch
+        {
+            Marshal.FreeHGlobal(subscribeParameters);
+            throw;
+        }
+
         SystemEvents.SessionSwitch += OnSessionSwitch;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         SystemEvents.SessionEnding += OnSessionEnding;
-
-        callback = OnPowerSetting;
-        subscribeParameters = Marshal.AllocHGlobal(2 * nint.Size);
-        Marshal.WriteIntPtr(subscribeParameters, Marshal.GetFunctionPointerForDelegate(callback));
-        Marshal.WriteIntPtr(subscribeParameters, nint.Size, 0);
-        if (PowerSettingRegisterNotification(in ConsoleDisplayState, DeviceNotifyCallback, subscribeParameters, out registration) != 0)
-        {
-            // The session events of ADR 9 still apply; IsWatchingDisplay says this one did not.
-            registration = 0;
-        }
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
@@ -113,8 +122,11 @@ public sealed partial class SystemLockEvents : ILockEvents
     /// <inheritdoc />
     public event EventHandler<LockEventArgs>? LockRequested;
 
-    /// <summary>Whether Windows accepted the display state subscription.</summary>
-    internal bool IsWatchingDisplay => registration != 0;
+    /// <summary>
+    /// Whether Windows accepted the display state subscription (ADR 16). When false, only the
+    /// session and power events lock, and the extension can say so.
+    /// </summary>
+    public bool IsWatchingDisplay => registration != 0;
 
     /// <summary>Unsubscribes; the static Windows events would otherwise keep this alive.</summary>
     public void Dispose()
@@ -134,6 +146,9 @@ public sealed partial class SystemLockEvents : ILockEvents
         }
 
         Marshal.FreeHGlobal(subscribeParameters);
+
+        // A callback Windows started before the unregistration must still find its delegate.
+        GC.KeepAlive(callback);
     }
 
     /// <summary>The lock a session switch calls for, if any.</summary>
