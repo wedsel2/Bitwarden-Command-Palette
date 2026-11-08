@@ -14,7 +14,7 @@ internal sealed partial class BitwardenCommandsProvider : CommandProvider
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
         _commands =
         [
-            new CommandItem(new SpikePage()) { Title = "Bitwarden", Subtitle = "Search your vault" },
+            new CommandItem(new PlaceholderPage()) { Title = "Bitwarden", Subtitle = "Search your vault" },
         ];
     }
 

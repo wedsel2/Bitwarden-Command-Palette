@@ -23,7 +23,6 @@ internal static class Program
             return;
         }
 
-        SpikeLog.Start();
         using var extensionDisposed = new ManualResetEvent(false);
         using var extension = new BitwardenExtension(extensionDisposed);
 
@@ -35,7 +34,6 @@ internal static class Program
 
             // One extension instance for the life of the process; exit once the host disposes it.
             extensionDisposed.WaitOne();
-            SpikeLog.Write("extension disposed by host");
             server.Stop();
         }
         finally
