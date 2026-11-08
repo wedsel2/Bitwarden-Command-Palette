@@ -104,5 +104,5 @@ internal static class Icons
 
     public static IconInfo Clock { get; } = new("");
 
-    public static IconInfo Warning { get; } = new("");
+    public static IconInfo Globe { get; } = new("");
 }

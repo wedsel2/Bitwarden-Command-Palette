@@ -1,3 +1,4 @@
+using BitwardenCommandPalette.Core;
 using BitwardenCommandPalette.Core.Bw;
 using BitwardenCommandPalette.Core.Session;
 using Microsoft.CommandPalette.Extensions;
@@ -64,9 +65,13 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
 
     public void Dispose() => services.Session.Locked -= OnLocked;
 
+    // Enter opens the login's own page; the context menu keeps the copy actions one step closer.
     private ListItem Item(BwLogin login)
     {
-        var more = new List<IContextItem>();
+        var more = new List<IContextItem>
+        {
+            new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Password)),
+        };
         if (!string.IsNullOrEmpty(login.Username))
         {
             more.Add(new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Username)));
@@ -78,14 +83,18 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
         }
 
         more.Add(new CommandContextItem(lockCommand));
-        return new ListItem(new CopyFieldCommand(services, login.Id, CopyField.Password))
+        return new ListItem(new LoginPage(services, login, lockCommand))
         {
             Title = login.Name,
-            Subtitle = login.Username ?? string.Empty,
+            Subtitle = Subtitle(login),
             Icon = Icons.Key,
             MoreCommands = [.. more],
         };
     }
+
+    // "alice · example.com": the username and the first website, whichever the login has.
+    private static string Subtitle(BwLogin login) =>
+        string.Join(" · ", new[] { login.Username, VaultIndex.FirstHost(login) }.Where(part => !string.IsNullOrEmpty(part)));
 
     // Raised on whichever thread locked; Command Palette asks for the items again.
     private void OnLocked(object? sender, LockEventArgs e) => RaiseItemsChanged();
