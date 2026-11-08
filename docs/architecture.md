@@ -175,8 +175,9 @@ src/BitwardenCommandPalette.Extension/    Command Palette extension, MSIX
 tests/BitwardenCommandPalette.Core.Tests/ unit tests, canary tests
 tests/FakeBw/                             test stand-in for bw.exe (phase 3)
 tests/FakeBw/recordings/                  scrubbed bw output from a test vault
-tools/                                    Record-BwOutput.ps1, which makes those recordings
-docs/                                     this document, roadmap, pipeline, ADRs
+tools/                                    maintainer scripts: bw recordings, package images, signing certificate
+.github/scripts/                          New-ReleasePackages.ps1, the release build (ci-pipeline.md)
+docs/                                     this document, roadmap, pipeline, install guide, ADRs
 ```
 
 ## Testing
