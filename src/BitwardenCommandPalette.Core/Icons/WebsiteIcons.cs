@@ -145,7 +145,10 @@ public sealed class WebsiteIcons : IDisposable
             return Task.FromResult<byte[]?>(null);
         }
 
-        return current.GetOrAdd(name, key => new Lazy<Task<byte[]?>>(() => FetchAsync(iconServer, key, token))).Value;
+        return current.GetOrAdd(
+            name,
+            static (key, state) => new Lazy<Task<byte[]?>>(() => state.Icons.FetchAsync(state.Server, key, state.Token)),
+            (Icons: this, Server: iconServer, Token: token)).Value;
     }
 
     /// <summary>Drops every cached icon and abandons fetches still running; called at every lock.</summary>

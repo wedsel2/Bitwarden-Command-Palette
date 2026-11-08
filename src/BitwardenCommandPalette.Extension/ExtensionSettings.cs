@@ -63,7 +63,15 @@ internal sealed partial class ExtensionSettings : JsonSettingsManager
         Settings.Add(syncInterval);
         Settings.Add(showIcons);
 
-        LoadSettings();
+        try
+        {
+            LoadSettings();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            // A damaged or unreadable file: start with the defaults; saving the page writes a new one.
+        }
+
         Settings.SettingsChanged += (_, _) =>
         {
             SaveSettings();
