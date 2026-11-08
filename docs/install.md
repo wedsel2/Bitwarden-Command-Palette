@@ -86,8 +86,21 @@ extension is built from, with its version and licence.
 
 ## 4. Trust the development certificate
 
-Open `BitwardenCommandPalette-signing.cer` (double-click it), and on the
-**Details** tab check that **Thumbprint** is exactly:
+This step needs an **administrator** PowerShell: open the Start menu, type
+`PowerShell`, right-click **Windows PowerShell** and choose **Run as
+administrator**, then go to the folder you downloaded to:
+
+```powershell
+cd $env:USERPROFILE\Downloads
+```
+
+Check the certificate's thumbprint:
+
+```powershell
+(Get-PfxCertificate .\BitwardenCommandPalette-signing.cer).Thumbprint
+```
+
+It must be exactly:
 
 ```text
 ED72DA0FF1331A20F0DD1F8182B8FF9F935E7CF5
@@ -97,8 +110,8 @@ ED72DA0FF1331A20F0DD1F8182B8FF9F935E7CF5
 Microsoft Store assigned to this project; valid until 8 November 2029.)
 
 If it differs, stop: the file is not this project's. If it matches, add it to
-the machine's **Trusted People** store. In PowerShell **run as administrator**,
-in the folder you downloaded to:
+the machine's **Trusted People** store, in the same administrator window (in a
+normal window this fails with "Access is denied"):
 
 ```powershell
 Import-Certificate -FilePath .\BitwardenCommandPalette-signing.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
@@ -115,7 +128,8 @@ This is why the Microsoft Store is the recommended way to install.
 
 ## 5. Install
 
-Double-click the `.msix` and choose **Install**, or in PowerShell:
+Double-click the `.msix` and choose **Install**, or in PowerShell (a normal
+window is enough):
 
 ```powershell
 Add-AppxPackage .\BitwardenCommandPalette-<version>-x64.msix
@@ -124,6 +138,10 @@ Add-AppxPackage .\BitwardenCommandPalette-<version>-x64.msix
 Open Command Palette and type `bitwarden`. Choose **Bitwarden**, enter your
 master password, and search your logins. The extension's settings are in
 Command Palette's settings, under **Extensions**, **Bitwarden**.
+
+If the Bitwarden commands show up twice after installing over an earlier
+version, type `reload` in Command Palette and run its command to reload
+extensions, or exit PowerToys from its tray icon and start it again.
 
 ## Updating
 
