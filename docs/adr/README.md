@@ -24,6 +24,7 @@ the old one.
 | [16](0016-lock-when-the-display-turns-off.md) | The vault locks when the display turns off | Accepted |
 | [17](0017-copy-relies-on-bw-gets-own-session-check.md) | A copy relies on bw get's own session check | Accepted |
 | [18](0018-master-password-reprompt.md) | Logins marked for reprompt ask for the master password before each secret copy | Accepted |
+| [19](0019-website-icons-from-the-bitwarden-icon-server.md) | Website icons come from the vault's Bitwarden icon server and stay in memory | Accepted |
 
 New records use the same sections: Context, Decision, Alternatives considered,
 Consequences.

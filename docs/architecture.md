@@ -1,8 +1,9 @@
 # Architecture
 
-Target design. What exists today is the pipeline, the secret types, `BwCli`,
-`BwLocator` with the signature check and `VaultIndex` in `Core`, the fake `bw` for tests, and a placeholder extension that loads in
-Command Palette.
+Target design. What exists today is the pipeline, Core (secret types, `BwCli`,
+`BwLocator` with the signature check, `VaultIndex`, `ClipboardService`,
+`SessionManager`, `WebsiteIcons`), the fake `bw` for tests, and an extension
+that unlocks, searches, copies, syncs and locks, with a settings page.
 See the [roadmap](roadmap.md) for the order of work and the
 [decision records](adr/README.md) for the reasoning.
 
@@ -29,6 +30,7 @@ conflict, security wins.
  │    VaultIndex       names, usernames, URIs, "has TOTP" flags     │
  │    BwCli            the only code that starts bw.exe             │
  │    ClipboardService copy without history, clear if unchanged     │
+ │    WebsiteIcons     login icons from the icon server, in memory  │
  │    Secret types     MasterPassword, SessionKey, Secret           │
  │                                                                  │
  └────────│─────────────────────────────────────────────────────────┘
@@ -42,12 +44,13 @@ conflict, security wins.
 
 | Component | Responsibility |
 |---|---|
-| **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. No Bitwarden or Windows security logic. `VaultServices` creates Core's services once and locks the vault when the host disposes the extension; `LocatingBwCli` finds a signed `bw.exe` on first use, so the extension starts, and says what is missing, before bw is installed. |
+| **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. `ExtensionSettings` keeps the settings page and its file; `VaultSettings` in Core reads each stored value back within Core's limits. No Bitwarden or Windows security logic. `VaultServices` creates Core's services once and locks the vault when the host disposes the extension; `LocatingBwCli` finds a signed `bw.exe` on first use, so the extension starts, and says what is missing, before bw is installed. |
 | **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). Owns `VaultIndex` and runs search and copy itself, so the extension never holds the key, the index or a fetched secret. The Windows events come through `ILockEvents`; `SystemLockEvents` reads them from `SystemEvents`, and locks when the display turns off, which also covers sleep on Modern Standby PCs ([ADR 16](adr/0016-lock-when-the-display-turns-off.md)). |
 | **VaultIndex** | The searchable list of logins, without secrets, loaded at unlock and dropped at lock ([ADR 10](adr/0010-metadata-in-memory-secrets-per-action.md)). |
 | **BwCli** | Starts `bw.exe` only after checking its signature, with arguments that never contain a secret, and parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). `BwLocator` finds a signed `bw.exe` in the settings, the known install locations or `PATH` ([ADR 15](adr/0015-finding-and-verifying-bw.md)). |
 | **ClipboardService** | Puts a secret on the clipboard outside history and cloud sync, and clears it later if it is still ours ([ADR 11](adr/0011-clipboard-outside-history-cleared-if-unchanged.md)). Only its `Win32Clipboard` touches the Windows clipboard. |
 | **Secret types** | Wrap every secret so it cannot be printed or logged by accident ([ADR 13](adr/0013-secret-types-and-canary-tests.md)). |
+| **WebsiteIcons** | Fetches each login's website icon from the icon server of the vault's Bitwarden server, by host name only, and keeps it in memory until the next lock; off with the "Show website icons" setting ([ADR 19](adr/0019-website-icons-from-the-bitwarden-icon-server.md)). |
 
 The extension and Core run in one process. Command Palette already isolates
 the extension in its own process, so there is no pipe or socket of our own
@@ -112,13 +115,35 @@ Both timeouts are measured on the wall clock and checked again before every
 action, so a timer delayed by sleep cannot keep the vault open, and a clock that
 moves back more than 5 seconds (more than a time sync correction) locks it.
 
+### Sync
+
+The "Sync vault" command, at the top level and in each login's context menu,
+runs `bw sync` and `bw list items` with the current key and replaces the index.
+It takes turns with unlocks and reprompts, counts as activity, and discards the
+list if the vault locked meanwhile. A server that cannot be reached is reported
+and the vault stays open on its local copy; `bw` reporting the vault locked
+locks the session.
+
+### Website icons
+
+With "Show website icons" on (the default), the vault page shows the key icon,
+then each login's website icon once `WebsiteIcons` has it. Only the first
+website's host name is sent, never a path or query, and never a private name
+(an IP address, a name without a dot, `.local` and the like). Icons come from
+`icons.bitwarden.net`, `icons.bitwarden.eu` or a self-hosted server's
+`/icons/` over HTTPS, without redirects or cookies, at most 64 KB each and
+only if they look like an image. They reach Command Palette as an in-memory
+stream and are dropped at every lock
+([ADR 19](adr/0019-website-icons-from-the-bitwarden-icon-server.md)).
+
 ### Lock
 
 Triggered by the idle timer (default 10 minutes), the absolute timer (default
 60 minutes), Windows lock, sleep or sign-out, the display turning off, the lock command, the extension
 shutting down, or `bw` reporting the vault locked:
 
-1. `SessionManager` drops the key; `VaultIndex` drops the metadata.
+1. `SessionManager` drops the key; `VaultIndex` drops the metadata and
+   `WebsiteIcons` the icons.
 2. `ClipboardService` clears the clipboard if it still holds our last value.
 3. `BwCli` runs `bw lock`, which makes the session key worthless. If it fails,
    the vault stays locked for us: the only copy of the key is already gone.
@@ -133,9 +158,10 @@ crash is closed before anything else.
 | Master password | Extension memory, then the `bw unlock` child's environment | One unlock call |
 | Session key | Extension memory; each `bw` child's environment | Until lock |
 | Names, usernames, URIs, "has TOTP" | Extension memory (`VaultIndex`) | Until lock |
+| Website icons | Extension memory (`WebsiteIcons`); their host names go to the Bitwarden icon server | Until lock |
 | Password, TOTP code | Extension memory, then the clipboard | One copy; clipboard cleared after 20 seconds by default |
 | Encrypted vault | `data.json`, owned by `bw` | Until `bw logout` |
-| Settings (bw path, timeouts, clear delay) | Command Palette extension settings file | Permanent; never a secret |
+| Settings (bw path, timeouts, clear delay, sync interval, website icons) | `settings.json` in the toolkit's settings folder for the extension | Permanent; never a secret |
 
 Nothing the extension writes to disk contains a secret or a vault item name.
 .NET strings cannot be reliably wiped from memory; the design keeps their

@@ -108,6 +108,56 @@ internal sealed partial class LockCommand : InvokableCommand
     }
 }
 
+/// <summary>Runs <c>bw sync</c> and reloads the list, so a change made elsewhere shows up.</summary>
+internal sealed partial class SyncCommand : InvokableCommand
+{
+    private readonly SessionManager session;
+    private readonly Action onSynced;
+    private readonly Page? owner;
+
+    // `owner`, when given, shows its loading indicator while bw works.
+    public SyncCommand(SessionManager session, Action onSynced, Page? owner = null)
+    {
+        this.session = session;
+        this.onSynced = onSynced;
+        this.owner = owner;
+        Name = "Sync vault";
+        Icon = Icons.Sync;
+    }
+
+    public override ICommandResult Invoke()
+    {
+        if (owner is not null)
+        {
+            owner.IsLoading = true;
+        }
+
+        try
+        {
+            // Command Palette calls this off its UI thread; bw sync takes a few seconds.
+            var outcome = session.SyncAsync().GetAwaiter().GetResult();
+            if (outcome == SyncOutcome.Synced)
+            {
+                onSynced();
+                return Toasts.Show("Vault synced.", CommandResult.KeepOpen());
+            }
+
+            return Toasts.Show("The vault is locked. Open Bitwarden and unlock it.", CommandResult.KeepOpen());
+        }
+        catch (BwCliException exception)
+        {
+            return Toasts.Show(exception.Message, CommandResult.KeepOpen());
+        }
+        finally
+        {
+            if (owner is not null)
+            {
+                owner.IsLoading = false;
+            }
+        }
+    }
+}
+
 /// <summary>Shows a message, then does what <c>then</c> says.</summary>
 internal static class Toasts
 {
@@ -127,4 +177,6 @@ internal static class Icons
     public static IconInfo Clock { get; } = new("");
 
     public static IconInfo Globe { get; } = new("");
+
+    public static IconInfo Sync { get; } = new("");
 }
