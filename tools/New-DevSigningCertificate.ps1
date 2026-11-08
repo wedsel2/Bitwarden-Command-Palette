@@ -33,8 +33,13 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     throw 'The GitHub CLI (gh) is needed to set the secrets.'
 }
 
-# Must match the Publisher in src/BitwardenCommandPalette.Extension/Package.appxmanifest.
-$subject = 'CN=wedsel2'
+# Must match the Publisher in the manifest, which is the Store's publisher (ADR 20).
+$manifestPath = Join-Path $PSScriptRoot '..\src\BitwardenCommandPalette.Extension\Package.appxmanifest'
+[xml] $manifest = Get-Content $manifestPath -Raw
+$subject = $manifest.Package.Identity.Publisher
+if (-not $subject) {
+    throw "No Publisher found in $manifestPath."
+}
 
 if (-not $PSCmdlet.ShouldProcess($Repository, "Create a code signing certificate for $subject and set its secrets")) {
     return

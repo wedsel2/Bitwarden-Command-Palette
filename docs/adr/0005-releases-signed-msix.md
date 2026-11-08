@@ -1,6 +1,6 @@
 # 5. Release with semantic-release: a signed MSIX with SBOM and provenance
 
-- Status: Accepted
+- Status: Superseded by [20](0020-distribute-through-the-microsoft-store.md) (signing and distribution; the release pipeline stands)
 - Date: 2026-11-07
 
 ## Context

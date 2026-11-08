@@ -15,6 +15,7 @@
         "draftRelease": true,
         "assets": [
           { "path": "dist/*.msix" },
+          { "path": "dist/*.msixbundle" },
           { "path": "dist/*.cdx.json" },
           { "path": "dist/*.cer" },
           { "path": "dist/SHA256SUMS.txt" }

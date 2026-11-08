@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
-Builds the signed release packages: one MSIX per platform, a CycloneDX SBOM and SHA-256 sums.
+Builds the signed release packages: one MSIX per platform, a bundle of both for the Microsoft
+Store, a CycloneDX SBOM and SHA-256 sums.
 
 .DESCRIPTION
 Run by the package job in .github/workflows/ci.yml, and locally to try a release build.
@@ -78,6 +79,29 @@ try {
         if ($signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
             throw "$target is not signed with the release certificate."
         }
+    }
+
+    # One bundle with both platforms: what the Microsoft Store takes (ADR 20).
+    $sdkBin = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.*\x64" -Directory |
+        Where-Object { Test-Path (Join-Path $_.FullName 'makeappx.exe') } |
+        Sort-Object { [version] $_.Parent.Name } -Descending | Select-Object -First 1
+    if (-not $sdkBin) {
+        throw 'makeappx.exe was not found in the Windows SDK.'
+    }
+
+    $bundleInput = Join-Path $staging 'bundle'
+    New-Item $bundleInput -ItemType Directory | Out-Null
+    Copy-Item (Join-Path $OutDir '*.msix') $bundleInput
+    $bundle = Join-Path $OutDir "BitwardenCommandPalette-$Version.msixbundle"
+    & (Join-Path $sdkBin.FullName 'makeappx.exe') bundle /o /d $bundleInput /p $bundle /bv "$Version.0"
+    if ($LASTEXITCODE -ne 0) {
+        throw 'makeappx bundle failed.'
+    }
+
+    & (Join-Path $sdkBin.FullName 'signtool.exe') sign /fd SHA256 /sha1 $certificate.Thumbprint /s My `
+        /tr $timestampServer /td SHA256 $bundle
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Signing the bundle failed.'
     }
 }
 finally {

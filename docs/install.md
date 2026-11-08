@@ -4,11 +4,15 @@ Bitwarden Command Palette is an extension for the PowerToys Command Palette. It
 works through the official Bitwarden CLI, which you install and log in to
 yourself.
 
-> **Pre-release.** Until the releases are signed through SignPath
-> ([ADR 5](adr/0005-releases-signed-msix.md)), they are signed with this
-> project's own development certificate, which Windows does not trust by
-> default. Step 4 below makes Windows trust it. Skip the extension for now if
-> you would rather not do that.
+There are two ways to install it ([ADR 20](adr/0020-distribute-through-the-microsoft-store.md)):
+
+- **Microsoft Store (recommended).** Do steps 1 and 2, then install
+  **Bitwarden for Command Palette** from the Microsoft Store. Microsoft signs
+  the package and keeps it up to date; there is no certificate to trust.
+- **GitHub release.** For checking that the package was built by this
+  repository's pipeline. These releases are signed with the project's own
+  development certificate, which Windows does not trust by default: steps 3
+  to 5. Installing one replaces a Store copy and the other way round.
 
 ## 1. Requirements
 
@@ -50,7 +54,7 @@ You do not need to run `bw unlock`: the extension unlocks when you use it, and
 locks again after 10 minutes without use, or 1 hour at most (both can be
 changed in its settings).
 
-## 3. Download and check the package
+## 3. Download and check the package (GitHub release)
 
 From the [latest release](https://github.com/wedsel2/Bitwarden-Command-Palette/releases),
 download for your processor (Settings, System, About, System type):
@@ -86,10 +90,11 @@ Open `BitwardenCommandPalette-signing.cer` (double-click it), and on the
 **Details** tab check that **Thumbprint** is exactly:
 
 ```text
-695EED43C66F1FC5C313F559BB02141BE09672A4
+ED72DA0FF1331A20F0DD1F8182B8FF9F935E7CF5
 ```
 
-(Subject `CN=wedsel2`, valid until 8 November 2029.)
+(Subject `CN=6FAB27EF-B582-4420-BFED-78BE0A44207B`, the publisher ID the
+Microsoft Store assigned to this project; valid until 8 November 2029.)
 
 If it differs, stop: the file is not this project's. If it matches, add it to
 the machine's **Trusted People** store. In PowerShell **run as administrator**,
@@ -106,7 +111,7 @@ certificates. A self-signed certificate cannot be revoked, so if its key were
 ever leaked, the project would announce it in a release and on the
 [releases page](https://github.com/wedsel2/Bitwarden-Command-Palette/releases),
 and you would remove the certificate as under [Uninstalling](#uninstalling).
-This is why the SignPath-signed releases will replace it.
+This is why the Microsoft Store is the recommended way to install.
 
 ## 5. Install
 
@@ -130,14 +135,18 @@ one as in step 5. The certificate stays trusted until it expires.
 Remove **Bitwarden for Command Palette** in Settings, Apps, Installed apps, or:
 
 ```powershell
-Get-AppxPackage wedsel2.BitwardenCommandPalette | Remove-AppxPackage
+Get-AppxPackage wedsel2.BitwardenforCommandPalette | Remove-AppxPackage
 ```
 
-Then remove the certificate, again as administrator:
+If you installed a GitHub release, also remove the certificate, again as
+administrator:
 
 ```powershell
-Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -eq 'CN=wedsel2' | Remove-Item
+Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -eq 'CN=6FAB27EF-B582-4420-BFED-78BE0A44207B' | Remove-Item
 ```
+
+Earlier pre-releases used the package name `wedsel2.BitwardenCommandPalette`
+and the subject `CN=wedsel2`; remove those the same way if you still have them.
 
 The extension keeps no vault data on disk; its settings file goes with the
 package. The Bitwarden CLI keeps its own data; `bw logout` removes your

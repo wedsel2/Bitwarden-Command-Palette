@@ -10,7 +10,7 @@ the old one.
 | [2](0002-dotnet-toolchain.md) | .NET toolchain: pinned SDK, central packages, lock files, analyzers, xUnit v3 | Accepted |
 | [3](0003-security-and-quality-scanning.md) | Security and quality scanning, open-source dependencies only | Accepted |
 | [4](0004-dependency-updates-with-renovate.md) | Renovate for dependency updates | Accepted |
-| [5](0005-releases-signed-msix.md) | Release with semantic-release: a signed MSIX with SBOM and provenance | Accepted |
+| [5](0005-releases-signed-msix.md) | Release with semantic-release: a signed MSIX with SBOM and provenance | Superseded by [20](0020-distribute-through-the-microsoft-store.md) |
 | [6](0006-threat-model.md) | Threat model: what the extension protects against, and what it does not | Accepted |
 | [7](0007-bitwarden-access-through-the-cli.md) | Bitwarden access through the signed bw CLI, not an SDK and not bw serve | Accepted |
 | [8](0008-no-ipc-core-and-extension-in-one-process.md) | No IPC of our own: Core and Extension as two assemblies in one process | Accepted |
@@ -25,6 +25,7 @@ the old one.
 | [17](0017-copy-relies-on-bw-gets-own-session-check.md) | A copy relies on bw get's own session check | Accepted |
 | [18](0018-master-password-reprompt.md) | Logins marked for reprompt ask for the master password before each secret copy | Accepted |
 | [19](0019-website-icons-from-the-bitwarden-icon-server.md) | Website icons come from the vault's Bitwarden icon server and stay in memory | Accepted |
+| [20](0020-distribute-through-the-microsoft-store.md) | Distribute through the Microsoft Store; GitHub releases stay as the verifiable copy | Accepted |
 
 New records use the same sections: Context, Decision, Alternatives considered,
 Consequences.
