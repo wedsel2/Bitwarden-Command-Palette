@@ -79,7 +79,7 @@ phase 4.
 
 ### Live test (questions 3 and 4)
 
-Run on 2026-11-08; the results are above. To repeat it, it needs Developer Mode (Settings → System → For developers), which only you
+Run on 2026-11-08; the results are above. The logging it relied on (`SpikeLog`) was removed afterwards; to repeat it, check out commit `babbf66` or earlier. It needs Developer Mode (Settings → System → For developers), which only you
 should turn on. Then:
 
 ```powershell
