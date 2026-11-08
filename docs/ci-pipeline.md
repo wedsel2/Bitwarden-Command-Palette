@@ -19,8 +19,8 @@ pull request / push to main
     package       Windows: signed MSIX for x64 and ARM64, CycloneDX SBOM,
         │         SHA-256 sums; build provenance and SBOM attestations
         ▼
-    release       semantic-release → tag and GitHub release with the packages,
-                  marked pre-release while signed with the development certificate
+    release       semantic-release → tag and draft release with the packages,
+                  published as a pre-release while signed with the development certificate
 
 mondays           Renovate update pull requests (hosted app, not a workflow)
 ```

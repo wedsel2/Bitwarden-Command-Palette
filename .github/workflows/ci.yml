@@ -177,7 +177,8 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP "$([guid]::NewGuid()).pfx"
           try {
             [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_CERTIFICATE))
-            $password = ConvertTo-SecureString $env:SIGNING_CERTIFICATE_PASSWORD -AsPlainText -Force
+            # Base64, so trimming only drops a line ending a shell may have added when it was set.
+            $password = ConvertTo-SecureString $env:SIGNING_CERTIFICATE_PASSWORD.Trim() -AsPlainText -Force
             $certificate = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
           }
           finally {
@@ -232,6 +233,7 @@ jobs:
           npx --yes -p "semantic-release@$SEMANTIC_RELEASE_VERSION" \
             -p "@semantic-release/exec@$SEMANTIC_RELEASE_EXEC_VERSION" \
             semantic-release
-      # Signed with the development certificate, which Windows does not trust by default (ADR 5).
-      - name: Mark as a pre-release until SignPath signs it
-        run: gh release edit "v$EXPECTED_VERSION" --prerelease
+      # semantic-release leaves a draft; it goes public in one step, as a pre-release while it is
+      # signed with the development certificate, which Windows does not trust by default (ADR 5).
+      - name: Publish as a pre-release until SignPath signs it
+        run: gh release edit "v$EXPECTED_VERSION" --draft=false --prerelease

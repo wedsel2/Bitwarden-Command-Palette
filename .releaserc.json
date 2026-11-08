@@ -12,6 +12,7 @@
     [
       "@semantic-release/github",
       {
+        "draftRelease": true,
         "assets": [
           { "path": "dist/*.msix" },
           { "path": "dist/*.cdx.json" },
