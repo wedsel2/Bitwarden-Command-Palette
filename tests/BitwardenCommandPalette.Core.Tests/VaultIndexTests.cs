@@ -226,6 +226,25 @@ public sealed class VaultIndexTests
         Assert.Throws<ArgumentNullException>(() => index.Find(null!));
     }
 
+    [Theory]
+    [InlineData("https://www.example.com/reset?token=secret", "example.com")]
+    [InlineData("example.com/reset?token=secret", "example.com")]
+    [InlineData("androidapp://com.example.app", "com.example.app")]
+    [InlineData("", "")]
+    public void HostOfKeepsOnlyTheHost(string stored, string host)
+    {
+        Assert.Equal(host, VaultIndex.HostOf(stored));
+    }
+
+    [Fact]
+    public void FirstHostSkipsUrisWithoutOne()
+    {
+        Assert.Equal("example.com", VaultIndex.FirstHost(Login(1, "A", uris: ["", "https://example.com/x?token=1", "other.org"])));
+        Assert.Null(VaultIndex.FirstHost(Login(2, "B")));
+        Assert.Throws<ArgumentNullException>(() => VaultIndex.FirstHost(null!));
+        Assert.Throws<ArgumentNullException>(() => VaultIndex.HostOf(null!));
+    }
+
     private static string Id(int number) => $"00000000-0000-4000-8000-{number:d12}";
 
     private static BwLogin Login(int number, string name, string? username = null, string[]? uris = null) =>

@@ -206,6 +206,34 @@ public sealed class VaultIndex
         return true;
     }
 
+    /// <summary>
+    /// The host of a login URI without "www.", as search and the pages show it: never its path
+    /// or query, which can hold tokens.
+    /// </summary>
+    /// <param name="uri">A URI as Bitwarden stores it, with or without a scheme.</param>
+    /// <returns>The host, or an empty string when there is none.</returns>
+    internal static string HostOf(string uri)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+
+        // Bitwarden often stores a URI without a scheme ("example.com/reset?token=..."); it is
+        // read as https so that only its host is kept.
+        var host = HostIfAbsolute(uri) ?? HostIfAbsolute("https://" + uri) ?? uri.Split('/', '?', '#')[0];
+        return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
+    }
+
+    /// <summary>The first website of a login, as <see cref="HostOf"/> shows it.</summary>
+    /// <param name="login">The login.</param>
+    /// <returns>The host of its first URI that has one, or null.</returns>
+    public static string? FirstHost(BwLogin login)
+    {
+        ArgumentNullException.ThrowIfNull(login);
+        return login.Uris.Select(HostOf).FirstOrDefault(host => host.Length > 0);
+    }
+
+    private static string? HostIfAbsolute(string uri) =>
+        Uri.TryCreate(uri, UriKind.Absolute, out var parsed) && parsed.Host.Length > 0 ? parsed.Host : null;
+
     /// <summary>One loaded list, replaced as a whole.</summary>
     private sealed record Snapshot(Entry[] Entries, Dictionary<string, BwLogin> ById);
 
@@ -214,18 +242,6 @@ public sealed class VaultIndex
     {
         public BwLogin Login { get; } = login;
 
-        // The host of each URI without "www.": never its path or query, which can hold tokens.
         public string[] Hosts { get; } = [.. login.Uris.Select(HostOf).Where(host => host.Length > 0)];
-
-        private static string HostOf(string uri)
-        {
-            // Bitwarden often stores a URI without a scheme ("example.com/reset?token=..."); it is
-            // read as https so that only its host is kept.
-            var host = HostIfAbsolute(uri) ?? HostIfAbsolute("https://" + uri) ?? uri.Split('/', '?', '#')[0];
-            return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
-        }
-
-        private static string? HostIfAbsolute(string uri) =>
-            Uri.TryCreate(uri, UriKind.Absolute, out var parsed) && parsed.Host.Length > 0 ? parsed.Host : null;
     }
 }

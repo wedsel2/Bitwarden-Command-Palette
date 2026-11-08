@@ -42,7 +42,7 @@ conflict, security wins.
 
 | Component | Responsibility |
 |---|---|
-| **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. No Bitwarden or Windows security logic. |
+| **Extension** | Command Palette pages and commands: unlock form, search list, per-login actions, lock command, settings page. No Bitwarden or Windows security logic. `VaultServices` creates Core's services once and locks the vault when the host disposes the extension; `LocatingBwCli` finds a signed `bw.exe` on first use, so the extension starts, and says what is missing, before bw is installed. |
 | **SessionManager** | Holds the session key in memory, runs the timers, listens for Windows lock and sleep, decides when to lock ([ADR 9](adr/0009-session-key-in-memory-with-timeouts.md)). Owns `VaultIndex` and runs search and copy itself, so the extension never holds the key, the index or a fetched secret. The Windows events come through `ILockEvents`; `SystemLockEvents` reads them from `SystemEvents`, and locks when the display turns off, which also covers sleep on Modern Standby PCs ([ADR 16](adr/0016-lock-when-the-display-turns-off.md)). |
 | **VaultIndex** | The searchable list of logins, without secrets, loaded at unlock and dropped at lock ([ADR 10](adr/0010-metadata-in-memory-secrets-per-action.md)). |
 | **BwCli** | Starts `bw.exe` only after checking its signature, with arguments that never contain a secret, and parses its JSON ([ADR 7](adr/0007-bitwarden-access-through-the-cli.md)). `BwLocator` finds a signed `bw.exe` in the settings, the known install locations or `PATH` ([ADR 15](adr/0015-finding-and-verifying-bw.md)). |
@@ -95,10 +95,16 @@ once, so a search on another thread never sees a half-loaded list.
 ### Copy
 
 1. The user picks a login and an action: copy username, password or TOTP.
-2. `SessionManager` checks both timers and `bw status`. If either says locked,
-   the unlock form comes back and the action runs after unlocking.
-3. Username comes from `VaultIndex`. Password and TOTP are fetched now with
-   `bw get password <id>` or `bw get totp <id>`, never earlier.
+2. `SessionManager` checks both timers. If either has passed, the vault locks
+   and the user unlocks it again.
+3. Username comes from `VaultIndex`, with no `bw` call. Password and TOTP are
+   fetched now with `bw get password <id>` or `bw get totp <id>`, never earlier;
+   if `bw get` reports the vault locked, the session locks
+   ([ADR 17](adr/0017-copy-relies-on-bw-gets-own-session-check.md)).
+   For a login marked "Master password re-prompt", a password or TOTP copy first
+   asks for the master password and checks it with `bw unlock`, which also
+   replaces the session key; the absolute timeout is not reset
+   ([ADR 18](adr/0018-master-password-reprompt.md)).
 4. `ClipboardService` copies it and schedules the clear. If the vault was locked,
    or a timeout passed, while `bw` was fetching, the value is discarded instead.
 

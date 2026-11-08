@@ -1,6 +1,6 @@
 # 9. The session key lives in memory only, ended by idle and absolute timeouts and Windows lock
 
-- Status: Accepted
+- Status: Accepted; the `bw status` check before a copy is replaced by [ADR 17](0017-copy-relies-on-bw-gets-own-session-check.md)
 - Date: 2026-11-07
 
 ## Context

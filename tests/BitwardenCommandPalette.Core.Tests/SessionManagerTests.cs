@@ -44,6 +44,22 @@ public sealed class SessionManagerTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AStartAfterAnUnlockDoesNotEndTheNewSession()
+    {
+        var gate = new TaskCompletionSource();
+        cli.ListGate = gate.Task;
+        var unlock = UnlockAsync();
+
+        var start = session.StartAsync(Token);
+        gate.SetResult();
+        await unlock.ConfigureAwait(true);
+        await start.ConfigureAwait(true);
+
+        Assert.DoesNotContain("lock", cli.Calls);
+        Assert.True(session.IsUnlocked);
+    }
+
+    [Fact]
     public async Task UnlockLoadsTheIndexAndSyncsWhenNeverSynced()
     {
         Assert.Equal(UnlockOutcome.Unlocked, await UnlockAsync());
@@ -134,7 +150,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.Calls.Clear();
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => session.CopyAsync(Id, (CopyField)42, Token));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => session.CopyAsync(Id, (CopyField)42, cancellationToken: Token));
 
         Assert.Empty(cli.Calls);
         Assert.Empty(clipboard.Copied);
@@ -255,7 +271,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         time.Advance(TimeSpan.FromMinutes(9));
         _ = session.Search("ex");
         time.Advance(TimeSpan.FromMinutes(9));
-        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, Token));
+        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, cancellationToken: Token));
         time.Advance(TimeSpan.FromMinutes(9));
         Assert.True(session.IsUnlocked);
 
@@ -300,7 +316,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         session.IdleTimeout = SessionManager.MaximumIdleTimeout;
         time.AdjustTime(time.GetUtcNow() + SessionManager.MaximumIdleTimeout);
 
-        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
         Assert.Empty(clipboard.Copied);
         Assert.DoesNotContain(cli.Calls, call => call.StartsWith("get", StringComparison.Ordinal));
         Assert.Equal([LockReason.IdleTimeout], locks);
@@ -351,21 +367,21 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.Calls.Clear();
 
-        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
 
-        Assert.Equal(["status", $"get password {Id}"], cli.Calls);
+        Assert.Equal([$"get password {Id}"], cli.Calls);
         Assert.Equal([cli.PasswordValue], clipboard.Copied);
     }
 
     [Fact]
-    public async Task AUsernameComesFromTheIndexAfterAStatusCheck()
+    public async Task AUsernameComesFromTheIndexWithoutCallingBw()
     {
         await UnlockAsync();
         cli.Calls.Clear();
 
-        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, Token));
+        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, cancellationToken: Token));
 
-        Assert.Equal(["status"], cli.Calls);
+        Assert.Empty(cli.Calls);
         Assert.Equal(["alice"], clipboard.Copied);
     }
 
@@ -374,7 +390,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
     {
         await UnlockAsync();
 
-        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Totp, Token));
+        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Totp, cancellationToken: Token));
 
         Assert.Contains($"get totp {Id}", cli.Calls);
         Assert.Equal(["123456"], clipboard.Copied);
@@ -389,7 +405,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.Calls.Clear();
 
-        Assert.Equal(CopyOutcome.NotFound, await session.CopyAsync(id, field, Token));
+        Assert.Equal(CopyOutcome.NotFound, await session.CopyAsync(id, field, cancellationToken: Token));
 
         Assert.Empty(cli.Calls);
         Assert.Empty(clipboard.Copied);
@@ -398,7 +414,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
     [Fact]
     public async Task ACopyWhileLockedCallsNothing()
     {
-        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
 
         Assert.Empty(cli.Calls);
         Assert.Empty(clipboard.Copied);
@@ -410,11 +426,25 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.CliUnlocked = false;
 
-        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
 
         Assert.False(session.IsUnlocked);
         Assert.Equal([LockReason.CliLocked], locks);
         Assert.Empty(clipboard.Copied);
+    }
+
+    [Fact]
+    public async Task ACliLockedFromOutsideStillCopiesAUsernameThenLocksOnTheNextSecret()
+    {
+        // ADR 17: a username needs no bw call; the next password copy finds the vault locked.
+        await UnlockAsync();
+        cli.CliUnlocked = false;
+
+        Assert.Equal(CopyOutcome.Copied, await session.CopyAsync(Id, CopyField.Username, cancellationToken: Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
+
+        Assert.Equal(["alice"], clipboard.Copied);
+        Assert.Equal([LockReason.CliLocked], locks);
     }
 
     [Theory]
@@ -426,7 +456,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.FailGet = kind;
 
-        Assert.Equal(outcome, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(outcome, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
 
         Assert.Empty(clipboard.Copied);
         Assert.Equal(outcome == CopyOutcome.Locked, !session.IsUnlocked);
@@ -438,7 +468,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.FailGet = BwErrorKind.PremiumRequired;
 
-        var error = await Assert.ThrowsAsync<BwCliException>(() => session.CopyAsync(Id, CopyField.Totp, Token));
+        var error = await Assert.ThrowsAsync<BwCliException>(() => session.CopyAsync(Id, CopyField.Totp, cancellationToken: Token));
 
         Assert.Equal(BwErrorKind.PremiumRequired, error.Kind);
         Assert.True(session.IsUnlocked);
@@ -450,7 +480,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.DuringGet = () => events.Raise(LockReason.WindowsLocked);
 
-        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
 
         Assert.Empty(clipboard.Copied);
         Assert.Equal([LockReason.WindowsLocked], locks);
@@ -462,7 +492,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         await UnlockAsync();
         cli.DuringGet = () => time.AdjustTime(time.GetUtcNow() + SessionManager.DefaultIdleTimeout);
 
-        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, Token));
+        Assert.Equal(CopyOutcome.Locked, await session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
 
         Assert.Empty(clipboard.Copied);
         Assert.Equal([LockReason.IdleTimeout], locks);
@@ -532,7 +562,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
         Assert.Equal([LockReason.Shutdown], locks);
         Assert.False(events.HasSubscribers);
         await Assert.ThrowsAsync<ObjectDisposedException>(UnlockAsync);
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => session.CopyAsync(Id, CopyField.Password, Token));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => session.CopyAsync(Id, CopyField.Password, cancellationToken: Token));
     }
 
     [Fact]
@@ -563,7 +593,7 @@ public sealed class SessionManagerTests : IAsyncDisposable
     public async Task ArgumentsAreChecked()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() => session.UnlockAsync(null!, Token));
-        await Assert.ThrowsAnyAsync<ArgumentException>(() => session.CopyAsync(string.Empty, CopyField.Password, Token));
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => session.CopyAsync(string.Empty, CopyField.Password, cancellationToken: Token));
     }
 
     private Task<UnlockOutcome> UnlockAsync() => session.UnlockAsync(new MasterPassword(cli.CorrectPassword), Token);

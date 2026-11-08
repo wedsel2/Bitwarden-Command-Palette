@@ -35,12 +35,12 @@ public sealed class SessionCanaryTests
 
             printed.Add(await session.UnlockAsync(new MasterPassword("wrong"), token));
             printed.Add(await session.UnlockAsync(new MasterPassword(MasterPasswordCanary), token));
-            printed.Add(await session.CopyAsync(Id, CopyField.Password, token));
+            printed.Add(await session.CopyAsync(Id, CopyField.Password, cancellationToken: token));
             printed.AddRange(session.Search(null));
             cli.FailGet = BwErrorKind.PremiumRequired;
-            printed.Add(await Assert.ThrowsAsync<BwCliException>(() => session.CopyAsync(Id, CopyField.Totp, token)));
+            printed.Add(await Assert.ThrowsAsync<BwCliException>(() => session.CopyAsync(Id, CopyField.Totp, cancellationToken: token)));
             cli.FailGet = BwErrorKind.VaultLocked;
-            printed.Add(await session.CopyAsync(Id, CopyField.Password, token));
+            printed.Add(await session.CopyAsync(Id, CopyField.Password, cancellationToken: token));
             cli.FailList = BwErrorKind.UnexpectedOutput;
             printed.Add(await Assert.ThrowsAsync<BwCliException>(() => session.UnlockAsync(new MasterPassword(MasterPasswordCanary), token)));
             printed.Add(session);

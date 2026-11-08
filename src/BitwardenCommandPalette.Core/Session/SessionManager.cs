@@ -43,6 +43,15 @@ public enum CopyOutcome
 
     /// <summary>The login, or the requested field of it, does not exist.</summary>
     NotFound,
+
+    /// <summary>
+    /// The login is marked for master password reprompt: ask for the master password and copy
+    /// again with it (ADR 18). Nothing was fetched.
+    /// </summary>
+    RepromptRequired,
+
+    /// <summary>The master password given for a reprompt was wrong. Nothing was copied.</summary>
+    WrongPassword,
 }
 
 /// <summary>
@@ -232,18 +241,35 @@ public sealed class SessionManager : IAsyncDisposable
     /// <summary>
     /// Runs <c>bw lock</c> once at start-up, closing any session a crash left behind (ADR 9).
     /// A CLI that is missing, untrusted or not logged in has nothing to close and is ignored.
+    /// It takes turns with <see cref="UnlockAsync"/>, and is skipped once a session has been
+    /// unlocked: <c>bw unlock</c> already made every earlier key worthless, and a late
+    /// <c>bw lock</c> would end the new session.
     /// </summary>
     /// <param name="cancellationToken">Stops the call.</param>
     /// <returns>A task that completes when the CLI is locked.</returns>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+        await unlocking.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            lock (gate)
+            {
+                if (generation != 0)
+                {
+                    return;
+                }
+            }
+
             await cli.LockAsync(null, cancellationToken).ConfigureAwait(false);
         }
         catch (BwCliException)
         {
             // Nothing to close; unlocking reports a CLI problem when it matters.
+        }
+        finally
+        {
+            _ = unlocking.Release();
         }
     }
 
@@ -295,16 +321,20 @@ public sealed class SessionManager : IAsyncDisposable
 
     /// <summary>
     /// Copies one field of a login through <see cref="IClipboardService"/>, after checking both
-    /// timeouts and <c>bw status</c> (ADR 9). A password or TOTP code is fetched now, never earlier
-    /// (ADR 10), and never returned to the caller.
+    /// timeouts (ADR 9). A password or TOTP code is fetched now, never earlier (ADR 10), and never
+    /// returned to the caller; <c>bw get</c> itself tells a session that is no longer valid (ADR 17).
     /// </summary>
     /// <param name="itemId">The login's ID, from a search result.</param>
     /// <param name="field">What to copy.</param>
+    /// <param name="reprompt">
+    /// The master password the user typed for this copy, needed for the password or TOTP code of a
+    /// login marked for reprompt (ADR 18); checked with <c>bw unlock</c>, then dropped.
+    /// </param>
     /// <param name="cancellationToken">Stops the <c>bw</c> calls.</param>
     /// <returns>How the copy ended.</returns>
     /// <exception cref="BwCliException">The CLI failed, for example because TOTP needs Premium.</exception>
     /// <exception cref="ClipboardException">The clipboard could not be used.</exception>
-    public async Task<CopyOutcome> CopyAsync(string itemId, CopyField field, CancellationToken cancellationToken = default)
+    public async Task<CopyOutcome> CopyAsync(string itemId, CopyField field, MasterPassword? reprompt = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(itemId);
         if (!Enum.IsDefined(field))
@@ -335,16 +365,27 @@ public sealed class SessionManager : IAsyncDisposable
             return CopyOutcome.NotFound;
         }
 
+        if (login.RequiresReprompt && field != CopyField.Username)
+        {
+            if (reprompt is null)
+            {
+                return CopyOutcome.RepromptRequired;
+            }
+
+            var (failed, confirmed) = await RepromptAsync(reprompt, expected, cancellationToken).ConfigureAwait(false);
+            if (failed is { } outcome)
+            {
+                return outcome;
+            }
+
+            session = confirmed!;
+        }
+
         Secret? secret;
         try
         {
-            var status = await cli.GetStatusAsync(session, cancellationToken).ConfigureAwait(false);
-            if (status.State != BwVaultState.Unlocked)
-            {
-                await LockAsync(LockReason.CliLocked, expected).ConfigureAwait(false);
-                return CopyOutcome.Locked;
-            }
-
+            // No separate bw status (ADR 17): bw get fails with VaultLocked for a key that is no
+            // longer valid, and a username needs no bw call at all.
             secret = field switch
             {
                 CopyField.Password => await cli.GetPasswordAsync(session, login.Id, cancellationToken).ConfigureAwait(false),
@@ -500,6 +541,63 @@ public sealed class SessionManager : IAsyncDisposable
         {
             await LockAsync(LockReason.UnlockFailed, expected).ConfigureAwait(false);
             throw;
+        }
+    }
+
+    // ADR 18: checks the master password with bw unlock and, when it is right, swaps in the new
+    // key. The absolute timeout keeps running from the first unlock. Returns the failed outcome,
+    // or the key to fetch with.
+    private async Task<(CopyOutcome? Failed, SessionKey? Key)> RepromptAsync(MasterPassword password, long expected, CancellationToken cancellationToken)
+    {
+        await unlocking.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            SessionKey issued;
+            try
+            {
+                issued = await cli.UnlockAsync(password, cancellationToken).ConfigureAwait(false);
+            }
+            catch (BwCliException exception) when (exception.Kind == BwErrorKind.InvalidPassword)
+            {
+                return (CopyOutcome.WrongPassword, null);
+            }
+            catch (BwCliException exception) when (exception.Kind == BwErrorKind.NotLoggedIn)
+            {
+                await LockAsync(LockReason.CliLocked, expected).ConfigureAwait(false);
+                return (CopyOutcome.Locked, null);
+            }
+
+            LockReason? expired;
+            bool current;
+            lock (gate)
+            {
+                expired = Expired();
+                current = expected == generation && key is not null && expired is null;
+                if (current)
+                {
+                    // bw unlock has made the old key worthless; this one replaces it.
+                    key = issued;
+                    lastActivity = time.GetUtcNow();
+                }
+            }
+
+            if (!current)
+            {
+                // Locked, or a timeout passed, while bw was running: end both sessions.
+                if (expired is { } reason)
+                {
+                    await LockAsync(reason, expected).ConfigureAwait(false);
+                }
+
+                await LockQuietlyAsync(issued).ConfigureAwait(false);
+                return (CopyOutcome.Locked, null);
+            }
+
+            return (null, issued);
+        }
+        finally
+        {
+            _ = unlocking.Release();
         }
     }
 

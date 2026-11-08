@@ -67,8 +67,8 @@ older S3 sleep. Consequences:
 - If the user sets sign-in after sleep to **Never**, Modern Standby sends
   neither event, and the vault stays unlocked through sleep until a timeout
   passes. Both timeouts run on the wall clock, so they still apply on wake.
-  Closing this gap (for example by locking when the display turns off) is a
-  decision still to take.
+  [ADR 16](adr/0016-lock-when-the-display-turns-off.md) closes this gap: the
+  vault also locks when the display turns off.
 - `SessionEnding` was not observed; sign-out also sends `SessionLogoff`.
 
 **5. Settings storage.** The template's `SettingsManager` (toolkit
