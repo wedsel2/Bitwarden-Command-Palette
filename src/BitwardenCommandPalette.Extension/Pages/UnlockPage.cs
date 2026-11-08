@@ -39,7 +39,7 @@ internal sealed partial class UnlockForm : FormContent
         this.showLoading = showLoading;
 
         // Command Palette submits a form on Enter only from a single-line TextBox; a password input
-        // is a PasswordBox, so Enter does nothing there. Tab then Enter reaches the button.
+        // is a PasswordBox, so Enter does nothing there. The Down arrow then Enter reaches the button.
         TemplateJson = $$"""
             {
               "type": "AdaptiveCard",
@@ -48,7 +48,7 @@ internal sealed partial class UnlockForm : FormContent
               "body": [
                 {
                   "type": "TextBlock",
-                  "text": "Enter your master password, then press Tab and Enter, or click Unlock. Unlocking takes a few seconds.",
+                  "text": "Enter your master password, then press the Down arrow and Enter, or click Unlock. Unlocking takes a few seconds.",
                   "wrap": true
                 },
                 {
