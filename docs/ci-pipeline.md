@@ -13,17 +13,28 @@ pull request / push to main
  └─ scan-source   Trivy on the NuGet lock files
         │ all three must pass, main only
         ▼
-    release       semantic-release → tag and GitHub release
+    version       semantic-release --dry-run → the next version, or none
+        │ only when the commits warrant a release
+        ▼
+    package       Windows: signed MSIX for x64 and ARM64, CycloneDX SBOM,
+        │         SHA-256 sums; build provenance and SBOM attestations
+        ▼
+    release       semantic-release → tag and draft release with the packages,
+                  published as a pre-release while signed with the development certificate
 
 mondays           Renovate update pull requests (hosted app, not a workflow)
 ```
 
-The signed MSIX, its SBOM and build provenance join the release job once the
-extension project exists (roadmap phase 5).
+The packages are built from the same commit and in the same workflow run as
+the checks that passed, never rebuilt afterwards (ADR 5). The release job
+checks that semantic-release still picks the version the packages were built
+for.
 
 | File | Purpose |
 |---|---|
-| `.github/workflows/ci.yml` | Lint, test, scan, release |
+| `.github/workflows/ci.yml` | Lint, test, scan, version, package, release |
+| `.github/scripts/New-ReleasePackages.ps1` | Builds and signs the MSIX packages, the SBOM and the sums; runs locally too |
+| `tools/New-DevSigningCertificate.ps1` | Creates the development signing certificate and sets its secrets |
 | `.pre-commit-config.yaml` | Hooks shared by local commits and the lint job |
 | `global.json` | Pins the .NET SDK and selects Microsoft Testing Platform |
 | `Directory.Build.props` | Analyzer, lock file, audit and determinism settings for every project |
@@ -64,6 +75,8 @@ The Command Palette layer (`src/BitwardenCommandPalette.Extension`) is excluded
 from SonarQube coverage: it holds pages and commands only, and all logic that
 needs tests lives in Core (ADR 8). So is `tools/`: scripts the maintainer runs
 by hand, such as the `bw` recording script, which is not part of the product.
+So is `.github/`: the workflow and the release build script, which a release
+run exercises end to end.
 
 SonarQube Cloud is an external service, like GitHub itself. Its scanner is
 LGPL-3.0, but during the CI run it downloads Sonar's own analyzers, which are
@@ -79,6 +92,49 @@ Releases are driven by commit messages on `main`:
 | `feat: ...` | Minor release |
 | `feat!: ...` or a `BREAKING CHANGE:` footer | Major release |
 | `docs:`, `chore:`, `ci:`, `test:`, `refactor:` | No release |
+
+A release attaches:
+
+| File | What it is |
+|---|---|
+| `BitwardenCommandPalette-<version>-x64.msix`, `-arm64.msix` | The signed, self-contained, trimmed extension packages |
+| `BitwardenCommandPalette-<version>.cdx.json` | CycloneDX SBOM of the extension and Core; build-only tools have scope `excluded` |
+| `BitwardenCommandPalette-signing.cer` | The public half of the signing certificate |
+| `SHA256SUMS.txt` | SHA-256 of each file above |
+
+Each MSIX also has a build provenance attestation and an SBOM attestation,
+checked with `gh attestation verify` ([install guide](install.md)).
+
+### Signing
+
+Until SignPath Foundation signs the releases (ADR 5), they are signed with a
+self-signed development certificate whose subject, `CN=wedsel2`, matches the
+`Publisher` in `Package.appxmanifest`. Its key exists only in the Actions
+secrets `DEV_SIGNING_CERTIFICATE` (the PFX, base64) and
+`DEV_SIGNING_CERTIFICATE_PASSWORD`. The package job imports it into the
+runner's certificate store, the MSIX tooling signs from the store by
+thumbprint with an RFC 3161 timestamp, and the certificate is removed again.
+Without the secrets, the package job fails and nothing is released.
+
+To create or replace the certificate, run once:
+
+```bash
+powershell -File tools/New-DevSigningCertificate.ps1
+```
+
+It prints the new thumbprint. Put it in [docs/install.md](install.md), step 4,
+in the same pull request that announces the change: users compare it before
+trusting the certificate.
+
+### Trying a release build locally
+
+With a code signing certificate for `CN=wedsel2` in `Cert:\CurrentUser\My`
+(a throwaway one from `New-SelfSignedCertificate -Type CodeSigningCert` is
+enough to test the build):
+
+```bash
+powershell -File .github/scripts/New-ReleasePackages.ps1 -Version 0.1.0 -CertificateThumbprint <thumbprint> -OutDir dist
+```
 
 ## One-time setup outside the repository
 
@@ -101,7 +157,12 @@ These settings are not stored in the repository and must be redone if it is recr
    decides the release. Allow auto-merge (for Renovate) and delete branches
    after merging.
 
-Steps 3 to 5 can be applied with `gh api`; steps 1 and 2 need the browser.
+6. **Signing certificate**: run `tools/New-DevSigningCertificate.ps1` (see
+   [Signing](#signing)). Later, apply to SignPath Foundation and replace this
+   step with its setup (ADR 5).
+
+Steps 3 to 6 can be applied with `gh api` or `gh secret`; steps 1 and 2 need
+the browser.
 
 ## Local use
 

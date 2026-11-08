@@ -29,6 +29,12 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <!-- Trimming applies to the self-contained publish of one platform (see the publish profiles). -->
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug' and '$(PublishProfile)' != ''">true</PublishTrimmed>
+    <!--
+      IL2104 is the trimmer's one-per-assembly summary for referenced assemblies; the only one is
+      Microsoft.Windows.SDK.NET (the IL2081 fallback above). Our own projects are checked by the
+      trim and AOT analyzers at every build, which this does not touch.
+    -->
+    <NoWarn Condition="'$(PublishTrimmed)' == 'true'">$(NoWarn);IL2104</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

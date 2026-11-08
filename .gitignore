@@ -22,3 +22,7 @@ AppPackages/
 # Local Bitwarden CLI state, should one ever end up here.
 data.json
 .env
+
+# Release builds (.github/scripts/New-ReleasePackages.ps1, semantic-release).
+dist/
+.next-version

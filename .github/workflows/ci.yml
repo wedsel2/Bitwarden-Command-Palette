@@ -18,6 +18,10 @@ env:
   TRIVY_VERSION: v0.76.2
   DOTNET_NOLOGO: "1"
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  # renovate: datasource=npm depName=semantic-release
+  SEMANTIC_RELEASE_VERSION: 25.0.9
+  # renovate: datasource=npm depName=@semantic-release/exec
+  SEMANTIC_RELEASE_EXEC_VERSION: 7.1.0
 
 jobs:
   lint:
@@ -61,7 +65,7 @@ jobs:
           /d:sonar.host.url=https://sonarcloud.io
           /d:sonar.token="$env:SONAR_TOKEN"
           /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.*.xml"
-          /d:sonar.coverage.exclusions="src/BitwardenCommandPalette.Extension/**,tools/**"
+          /d:sonar.coverage.exclusions="src/BitwardenCommandPalette.Extension/**,tools/**,.github/**"
           /d:sonar.qualitygate.wait=true
       # CI=true makes restore run in locked mode: a lock file out of date fails here,
       # as does a known high or critical vulnerability (NuGet audit).
@@ -108,9 +112,103 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
-  release:
+  # Works out whether the commits since the last tag warrant a release, and its version, without
+  # publishing anything (semantic-release --dry-run). No version: no package and no release.
+  version:
     needs: [lint, test, scan-source]
     if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # semantic-release checks it could push the tag, even in a dry run
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Work out the next version
+        id: next
+        run: |
+          npx --yes -p "semantic-release@$SEMANTIC_RELEASE_VERSION" \
+            -p "@semantic-release/exec@$SEMANTIC_RELEASE_EXEC_VERSION" \
+            semantic-release --dry-run
+          if [ -f .next-version ]; then
+            echo "version=$(cat .next-version)" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Builds, signs and describes the release from this run's commit (ADR 5).
+  package:
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # build provenance and SBOM attestations
+      attestations: write
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      # Self-signed development certificate until SignPath signs the releases (ADR 5). The key
+      # goes into this runner's certificate store, not exportable, and never into a file we keep.
+      - name: Import the signing certificate
+        id: certificate
+        env:
+          SIGNING_CERTIFICATE: ${{ secrets.DEV_SIGNING_CERTIFICATE }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.DEV_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          if (-not $env:SIGNING_CERTIFICATE -or -not $env:SIGNING_CERTIFICATE_PASSWORD) {
+            throw 'The DEV_SIGNING_CERTIFICATE secrets are not set; see docs/ci-pipeline.md.'
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "$([guid]::NewGuid()).pfx"
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_CERTIFICATE))
+            # Base64, so trimming only drops a line ending a shell may have added when it was set.
+            $password = ConvertTo-SecureString $env:SIGNING_CERTIFICATE_PASSWORD.Trim() -AsPlainText -Force
+            $certificate = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          }
+          finally {
+            Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+          }
+          "thumbprint=$($certificate.Thumbprint)" >> $env:GITHUB_OUTPUT
+      - name: Build the signed packages and SBOM
+        run: >
+          ./.github/scripts/New-ReleasePackages.ps1
+          -Version $env:VERSION
+          -CertificateThumbprint ${{ steps.certificate.outputs.thumbprint }}
+          -OutDir dist
+      - name: Remove the signing certificate
+        if: always() && steps.certificate.outputs.thumbprint != ''
+        run: Remove-Item "Cert:\CurrentUser\My\${{ steps.certificate.outputs.thumbprint }}" -DeleteKey
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.msix
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: dist/*.msix
+          sbom-path: dist/BitwardenCommandPalette-${{ env.VERSION }}.cdx.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    needs: [version, package]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -118,14 +216,24 @@ jobs:
       issues: write # semantic-release comments on released issues
       pull-requests: write
     env:
-      # renovate: datasource=npm depName=semantic-release
-      SEMANTIC_RELEASE_VERSION: 25.0.9
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The release must be the version the packages were built for (checked in .releaserc.json).
+      EXPECTED_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      # Tags and notes only for now; the signed MSIX, SBOM and provenance are
-      # attached once the extension project exists (roadmap phase 5).
-      - name: Create release if commits warrant one
-        run: npx --yes "semantic-release@$SEMANTIC_RELEASE_VERSION"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: dist
+      - name: Create the release with the packages
+        run: |
+          npx --yes -p "semantic-release@$SEMANTIC_RELEASE_VERSION" \
+            -p "@semantic-release/exec@$SEMANTIC_RELEASE_EXEC_VERSION" \
+            semantic-release
+      # semantic-release leaves a draft; it goes public in one step, as a pre-release while it is
+      # signed with the development certificate, which Windows does not trust by default (ADR 5).
+      - name: Publish as a pre-release until SignPath signs it
+        run: gh release edit "v$EXPECTED_VERSION" --draft=false --prerelease

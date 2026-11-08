@@ -3,6 +3,23 @@
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
-    "@semantic-release/github"
+    [
+      "@semantic-release/exec",
+      {
+        "verifyReleaseCmd": "printf '%s' '${nextRelease.version}' > .next-version && { [ -z \"$EXPECTED_VERSION\" ] || [ \"$EXPECTED_VERSION\" = '${nextRelease.version}' ]; }"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "draftRelease": true,
+        "assets": [
+          { "path": "dist/*.msix" },
+          { "path": "dist/*.cdx.json" },
+          { "path": "dist/*.cer" },
+          { "path": "dist/SHA256SUMS.txt" }
+        ]
+      }
+    ]
   ]
 }
