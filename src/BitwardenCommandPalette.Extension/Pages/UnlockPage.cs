@@ -16,7 +16,7 @@ internal sealed partial class UnlockPage : ContentPage
         Icon = Icons.Lock;
         Title = "Unlock Bitwarden";
         Name = "Unlock";
-        form = new UnlockForm(session, onUnlocked);
+        form = new UnlockForm(session, onUnlocked, loading => IsLoading = loading);
     }
 
     public override IContent[] GetContent() => [form];
@@ -30,11 +30,16 @@ internal sealed partial class UnlockForm : FormContent
 {
     private readonly SessionManager session;
     private readonly Action onUnlocked;
+    private readonly Action<bool> showLoading;
 
-    public UnlockForm(SessionManager session, Action onUnlocked)
+    public UnlockForm(SessionManager session, Action onUnlocked, Action<bool> showLoading)
     {
         this.session = session;
         this.onUnlocked = onUnlocked;
+        this.showLoading = showLoading;
+
+        // The inline action makes Enter in the password field submit the form; the button below
+        // stays for the mouse.
         TemplateJson = $$"""
             {
               "type": "AdaptiveCard",
@@ -43,7 +48,7 @@ internal sealed partial class UnlockForm : FormContent
               "body": [
                 {
                   "type": "TextBlock",
-                  "text": "Enter your master password to unlock the vault.",
+                  "text": "Enter your master password to unlock the vault. Unlocking takes a few seconds.",
                   "wrap": true
                 },
                 {
@@ -52,7 +57,8 @@ internal sealed partial class UnlockForm : FormContent
                   "style": "Password",
                   "label": "Master password",
                   "isRequired": true,
-                  "errorMessage": "Enter your master password."
+                  "errorMessage": "Enter your master password.",
+                  "inlineAction": { "type": "Action.Submit", "title": "Unlock" }
                 }
               ],
               "actions": [
@@ -69,6 +75,7 @@ internal sealed partial class UnlockForm : FormContent
             return Toasts.Show("Enter your master password.", CommandResult.KeepOpen());
         }
 
+        showLoading(true);
         try
         {
             // Command Palette calls this off its UI thread; bw takes a few seconds.
@@ -86,12 +93,16 @@ internal sealed partial class UnlockForm : FormContent
             // Our own fixed message, never bw's output (ADR 13).
             return Toasts.Show(exception.Message, CommandResult.KeepOpen());
         }
+        finally
+        {
+            showLoading(false);
+        }
     }
 
     private CommandResult Unlocked()
     {
         // The vault page lists the logins now; it must ask for its items again.
         onUnlocked();
-        return CommandResult.GoBack();
+        return Toasts.Show("Vault unlocked.", CommandResult.GoBack());
     }
 }

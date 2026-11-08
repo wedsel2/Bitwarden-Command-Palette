@@ -70,16 +70,16 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
     {
         var more = new List<IContextItem>
         {
-            new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Password)),
+            new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Password, this)),
         };
         if (!string.IsNullOrEmpty(login.Username))
         {
-            more.Add(new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Username)));
+            more.Add(new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Username, this)));
         }
 
         if (login.HasTotp)
         {
-            more.Add(new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Totp)));
+            more.Add(new CommandContextItem(new CopyFieldCommand(services, login.Id, CopyField.Totp, this)));
         }
 
         more.Add(new CommandContextItem(lockCommand));

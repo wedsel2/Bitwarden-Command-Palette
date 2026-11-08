@@ -16,10 +16,13 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
     private readonly VaultServices services;
     private readonly string itemId;
     private readonly CopyField field;
+    private readonly Page owner;
 
-    public CopyFieldCommand(VaultServices services, string itemId, CopyField field)
+    // `owner` is the page the action runs from; it shows its loading indicator while bw works.
+    public CopyFieldCommand(VaultServices services, string itemId, CopyField field, Page owner)
     {
         this.services = services;
+        this.owner = owner;
         this.itemId = itemId;
         this.field = field;
         (Name, Icon) = field switch
@@ -32,6 +35,7 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
 
     public override ICommandResult Invoke()
     {
+        owner.IsLoading = true;
         try
         {
             // Command Palette calls this off its UI thread; bw takes a few seconds.
@@ -50,6 +54,10 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
         catch (ClipboardException exception)
         {
             return Toasts.Show(exception.Message, CommandResult.KeepOpen());
+        }
+        finally
+        {
+            owner.IsLoading = false;
         }
     }
 
