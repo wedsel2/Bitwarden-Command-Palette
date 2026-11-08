@@ -42,8 +42,9 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
             var outcome = services.Session.CopyAsync(itemId, field).GetAwaiter().GetResult();
             return outcome switch
             {
-                CopyOutcome.Copied => Toasts.Show(Copied(), CommandResult.Dismiss()),
+                CopyOutcome.Copied => Toasts.Show(CopyMessages.Copied(field, services.ClearDelay), CommandResult.Dismiss()),
                 CopyOutcome.Locked => Toasts.Show("The vault is locked. Open Bitwarden and unlock it.", CommandResult.KeepOpen()),
+                CopyOutcome.RepromptRequired => Toasts.Show("This login asks for your master password. Open it to copy.", CommandResult.KeepOpen()),
                 _ => Toasts.Show("This login has no such field.", CommandResult.KeepOpen()),
             };
         }
@@ -61,7 +62,20 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
         }
     }
 
-    private string Copied()
+    /// <summary>
+    /// The action for one field of a login: the copy itself, or for the password or TOTP code of a
+    /// login marked for reprompt, the page that asks for the master password first (ADR 18).
+    /// </summary>
+    public static ICommand For(VaultServices services, BwLogin login, CopyField field, Page owner) =>
+        login.RequiresReprompt && field != CopyField.Username
+            ? new RepromptPage(services, login, field)
+            : new CopyFieldCommand(services, login.Id, field, owner);
+}
+
+/// <summary>The texts the copy actions show.</summary>
+internal static class CopyMessages
+{
+    public static string Copied(CopyField field, TimeSpan clearDelay)
     {
         var what = field switch
         {
@@ -71,7 +85,7 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
         };
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"{what} copied. It is cleared from the clipboard in {services.ClearDelay.TotalSeconds:0} seconds.");
+            $"{what} copied. It is cleared from the clipboard in {clearDelay.TotalSeconds:0} seconds.");
     }
 }
 

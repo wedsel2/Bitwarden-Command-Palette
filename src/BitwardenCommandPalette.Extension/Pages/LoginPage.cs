@@ -23,12 +23,12 @@ internal sealed partial class LoginPage : ListPage
 
         var list = new List<IListItem>
         {
-            new ListItem(new CopyFieldCommand(services, login.Id, CopyField.Password, this)) { Title = "Copy password" },
+            new ListItem(CopyFieldCommand.For(services, login, CopyField.Password, this)) { Title = "Copy password" },
         };
 
         if (!string.IsNullOrEmpty(login.Username))
         {
-            list.Add(new ListItem(new CopyFieldCommand(services, login.Id, CopyField.Username, this))
+            list.Add(new ListItem(CopyFieldCommand.For(services, login, CopyField.Username, this))
             {
                 Title = "Copy username",
                 Subtitle = login.Username,
@@ -37,7 +37,7 @@ internal sealed partial class LoginPage : ListPage
 
         if (login.HasTotp)
         {
-            list.Add(new ListItem(new CopyFieldCommand(services, login.Id, CopyField.Totp, this)) { Title = "Copy TOTP code" });
+            list.Add(new ListItem(CopyFieldCommand.For(services, login, CopyField.Totp, this)) { Title = "Copy TOTP code" });
         }
 
         if (VaultIndex.FirstHost(login) is { } host)

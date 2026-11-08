@@ -38,6 +38,9 @@ internal sealed class FakeCli : IBwCli
     /// <summary>Runs inside bw get before it returns, to simulate what happens meanwhile.</summary>
     public Action? DuringGet { get; set; }
 
+    /// <summary>Runs inside bw unlock before it returns, to simulate what happens meanwhile.</summary>
+    public Action? DuringUnlock { get; set; }
+
     /// <summary>Awaited inside bw list items, to hold an unlock half way.</summary>
     public Task? ListGate { get; set; }
 
@@ -62,6 +65,8 @@ internal sealed class FakeCli : IBwCli
         {
             throw new BwCliException(BwErrorKind.InvalidPassword);
         }
+
+        DuringUnlock?.Invoke();
 
         Issued = new SessionKey(SessionKeyPrefix + ++issuedCount);
         CliUnlocked = true;

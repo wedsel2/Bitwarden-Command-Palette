@@ -101,6 +101,10 @@ once, so a search on another thread never sees a half-loaded list.
    fetched now with `bw get password <id>` or `bw get totp <id>`, never earlier;
    if `bw get` reports the vault locked, the session locks
    ([ADR 17](adr/0017-copy-relies-on-bw-gets-own-session-check.md)).
+   For a login marked "Master password re-prompt", a password or TOTP copy first
+   asks for the master password and checks it with `bw unlock`, which also
+   replaces the session key; the absolute timeout is not reset
+   ([ADR 18](adr/0018-master-password-reprompt.md)).
 4. `ClipboardService` copies it and schedules the clear. If the vault was locked,
    or a timeout passed, while `bw` was fetching, the value is discarded instead.
 
