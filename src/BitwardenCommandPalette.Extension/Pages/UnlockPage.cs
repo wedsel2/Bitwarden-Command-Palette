@@ -38,8 +38,8 @@ internal sealed partial class UnlockForm : FormContent
         this.onUnlocked = onUnlocked;
         this.showLoading = showLoading;
 
-        // The inline action makes Enter in the password field submit the form; the button below
-        // stays for the mouse.
+        // Command Palette submits a form on Enter only from a single-line TextBox; a password input
+        // is a PasswordBox, so Enter does nothing there. Tab then Enter reaches the button.
         TemplateJson = $$"""
             {
               "type": "AdaptiveCard",
@@ -48,7 +48,7 @@ internal sealed partial class UnlockForm : FormContent
               "body": [
                 {
                   "type": "TextBlock",
-                  "text": "Enter your master password to unlock the vault. Unlocking takes a few seconds.",
+                  "text": "Enter your master password, then press Tab and Enter, or click Unlock. Unlocking takes a few seconds.",
                   "wrap": true
                 },
                 {
@@ -57,8 +57,7 @@ internal sealed partial class UnlockForm : FormContent
                   "style": "Password",
                   "label": "Master password",
                   "isRequired": true,
-                  "errorMessage": "Enter your master password.",
-                  "inlineAction": { "type": "Action.Submit", "title": "Unlock" }
+                  "errorMessage": "Enter your master password."
                 }
               ],
               "actions": [
