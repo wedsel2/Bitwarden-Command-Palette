@@ -4,8 +4,9 @@ A [PowerToys Command Palette](https://learn.microsoft.com/windows/powertoys/comm
 extension that searches your Bitwarden vault by name and copies a username,
 password or TOTP code, through the official Bitwarden CLI.
 
-**Status: pre-release.** Releases are signed with this project's own
-development certificate until SignPath signs them. See the
+**Status: pre-release.** It will be installed from the Microsoft Store, which
+signs it, so there is no certificate to trust; GitHub releases, signed with the
+project's own development certificate, are there to verify the build. See the
 [install guide](docs/install.md), the [roadmap](docs/roadmap.md) and the
 [architecture](docs/architecture.md).
 

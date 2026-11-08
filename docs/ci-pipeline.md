@@ -16,7 +16,7 @@ pull request / push to main
     version       semantic-release --dry-run → the next version, or none
         │ only when the commits warrant a release
         ▼
-    package       Windows: signed MSIX for x64 and ARM64, CycloneDX SBOM,
+    package       Windows: signed MSIX for x64 and ARM64 and a bundle of both, CycloneDX SBOM,
         │         SHA-256 sums; build provenance and SBOM attestations
         ▼
     release       semantic-release → tag and draft release with the packages,
@@ -98,18 +98,35 @@ A release attaches:
 | File | What it is |
 |---|---|
 | `BitwardenCommandPalette-<version>-x64.msix`, `-arm64.msix` | The signed, self-contained, trimmed extension packages |
+| `BitwardenCommandPalette-<version>.msixbundle` | Both packages in one signed bundle: what is uploaded to the Microsoft Store |
 | `BitwardenCommandPalette-<version>.cdx.json` | CycloneDX SBOM of the extension and Core; build-only tools have scope `excluded` |
 | `BitwardenCommandPalette-signing.cer` | The public half of the signing certificate |
 | `SHA256SUMS.txt` | SHA-256 of each file above |
 
-Each MSIX also has a build provenance attestation and an SBOM attestation,
-checked with `gh attestation verify` ([install guide](install.md)).
+Each MSIX and the bundle also have a build provenance attestation and an SBOM
+attestation, checked with `gh attestation verify` ([install guide](install.md)).
+
+### Microsoft Store
+
+The Store is the recommended way to install (ADR 20). For each release, until
+the Store submission API is automated:
+
+1. Download `BitwardenCommandPalette-<version>.msixbundle` from the GitHub
+   release, the file CI built and attested.
+2. In [Partner Center](https://partner.microsoft.com/dashboard/home), open
+   **Bitwarden for Command Palette**, start an update submission, and under
+   **Packages** replace the bundle with this one.
+3. Check the listing against [store-listing.md](store-listing.md) and submit.
+
+The Store re-signs the bundle with Microsoft's certificate after certification.
+The first submission also fills in the listing, age rating, pricing (free) and
+the privacy policy URL from [store-listing.md](store-listing.md).
 
 ### Signing
 
-Until SignPath Foundation signs the releases (ADR 5), they are signed with a
-self-signed development certificate whose subject, `CN=wedsel2`, matches the
-`Publisher` in `Package.appxmanifest`. Its key exists only in the Actions
+GitHub releases are signed with a self-signed development certificate whose
+subject matches the `Publisher` in `Package.appxmanifest`, which is the
+publisher Partner Center reserved (ADR 20). Its key exists only in the Actions
 secrets `DEV_SIGNING_CERTIFICATE` (the PFX, base64) and
 `DEV_SIGNING_CERTIFICATE_PASSWORD`. The package job imports it into the
 runner's certificate store, the MSIX tooling signs from the store by
@@ -158,8 +175,10 @@ These settings are not stored in the repository and must be redone if it is recr
    after merging.
 
 6. **Signing certificate**: run `tools/New-DevSigningCertificate.ps1` (see
-   [Signing](#signing)). Later, apply to SignPath Foundation and replace this
-   step with its setup (ADR 5).
+   [Signing](#signing)).
+7. **Microsoft Store**: a Partner Center developer account (individual, free)
+   with the product name reserved; its identity values are in
+   `Package.appxmanifest` (ADR 20).
 
 Steps 3 to 6 can be applied with `gh api` or `gh secret`; steps 1 and 2 need
 the browser.

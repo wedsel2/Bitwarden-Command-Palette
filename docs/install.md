@@ -4,11 +4,15 @@ Bitwarden Command Palette is an extension for the PowerToys Command Palette. It
 works through the official Bitwarden CLI, which you install and log in to
 yourself.
 
-> **Pre-release.** Until the releases are signed through SignPath
-> ([ADR 5](adr/0005-releases-signed-msix.md)), they are signed with this
-> project's own development certificate, which Windows does not trust by
-> default. Step 4 below makes Windows trust it. Skip the extension for now if
-> you would rather not do that.
+There are two ways to install it ([ADR 20](adr/0020-distribute-through-the-microsoft-store.md)):
+
+- **Microsoft Store (recommended).** Do steps 1 and 2, then install
+  **Bitwarden for Command Palette** from the Microsoft Store. Microsoft signs
+  the package and keeps it up to date; there is no certificate to trust.
+- **GitHub release.** For checking that the package was built by this
+  repository's pipeline. These releases are signed with the project's own
+  development certificate, which Windows does not trust by default: steps 3
+  to 5. Installing one replaces a Store copy and the other way round.
 
 ## 1. Requirements
 
@@ -50,7 +54,7 @@ You do not need to run `bw unlock`: the extension unlocks when you use it, and
 locks again after 10 minutes without use, or 1 hour at most (both can be
 changed in its settings).
 
-## 3. Download and check the package
+## 3. Download and check the package (GitHub release)
 
 From the [latest release](https://github.com/wedsel2/Bitwarden-Command-Palette/releases),
 download for your processor (Settings, System, About, System type):
@@ -106,7 +110,7 @@ certificates. A self-signed certificate cannot be revoked, so if its key were
 ever leaked, the project would announce it in a release and on the
 [releases page](https://github.com/wedsel2/Bitwarden-Command-Palette/releases),
 and you would remove the certificate as under [Uninstalling](#uninstalling).
-This is why the SignPath-signed releases will replace it.
+This is why the Microsoft Store is the recommended way to install.
 
 ## 5. Install
 
