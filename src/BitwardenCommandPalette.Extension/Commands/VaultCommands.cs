@@ -168,8 +168,11 @@ internal static class Toasts
 /// <summary>Segoe Fluent Icons glyphs used by the pages.</summary>
 internal static class Icons
 {
-    /// <summary>The extension's own icon, on its top-level commands: a glyph, not Bitwarden's logo.</summary>
-    public static IconInfo Shield { get; } = new("");
+    /// <summary>
+    /// The extension's own icon, on its top-level commands: the blue shield of the package images
+    /// (tools/Draw-Shield.ps1), not Bitwarden's logo. 48 px is the 24 px row at 200 % scale.
+    /// </summary>
+    public static IconInfo Shield { get; } = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.targetsize-48_altform-unplated.png");
 
     public static IconInfo Lock { get; } = new("");
 
