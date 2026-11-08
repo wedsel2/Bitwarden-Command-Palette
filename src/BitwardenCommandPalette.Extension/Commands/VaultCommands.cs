@@ -168,6 +168,9 @@ internal static class Toasts
 /// <summary>Segoe Fluent Icons glyphs used by the pages.</summary>
 internal static class Icons
 {
+    /// <summary>The extension's own icon, on its top-level commands: a glyph, not Bitwarden's logo.</summary>
+    public static IconInfo Shield { get; } = new("");
+
     public static IconInfo Lock { get; } = new("");
 
     public static IconInfo Key { get; } = new("");

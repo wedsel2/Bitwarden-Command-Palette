@@ -15,14 +15,16 @@ internal sealed partial class BitwardenCommandsProvider : CommandProvider
         var settings = new ExtensionSettings();
         services = new VaultServices(settings);
         DisplayName = "Bitwarden";
-        Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
+        Icon = Icons.Shield;
         Settings = settings.Settings;
         vaultPage = new VaultPage(services);
+
+        // Every top-level command carries the extension's icon, so they read as one group in the results.
         commands =
         [
-            new CommandItem(vaultPage) { Title = "Bitwarden", Subtitle = "Search your vault" },
-            new CommandItem(new SyncCommand(services.Session, vaultPage.Refresh)) { Title = "Sync Bitwarden vault", Subtitle = "Fetch changes made elsewhere" },
-            new CommandItem(new LockCommand(services.Session)) { Title = "Lock Bitwarden vault", Subtitle = "Lock now and clear a copied value" },
+            new CommandItem(vaultPage) { Title = "Bitwarden", Subtitle = "Search your vault", Icon = Icons.Shield },
+            new CommandItem(new SyncCommand(services.Session, vaultPage.Refresh)) { Title = "Sync Bitwarden vault", Subtitle = "Fetch changes made elsewhere", Icon = Icons.Shield },
+            new CommandItem(new LockCommand(services.Session)) { Title = "Lock Bitwarden vault", Subtitle = "Lock now and clear a copied value", Icon = Icons.Shield },
         ];
     }
 

@@ -23,7 +23,7 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
         unlockPage = new UnlockPage(services.Session, () => RaiseItemsChanged());
         lockCommand = new LockCommand(services.Session);
         syncCommand = new SyncCommand(services.Session, Refresh, this);
-        Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
+        Icon = Icons.Shield;
         Title = "Bitwarden";
         Name = "Open";
         PlaceholderText = "Search logins by name, website or username";
