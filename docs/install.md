@@ -86,8 +86,10 @@ Open `BitwardenCommandPalette-signing.cer` (double-click it), and on the
 **Details** tab check that **Thumbprint** is exactly:
 
 ```text
-(set when the certificate is created; see "Releasing" in docs/ci-pipeline.md)
+695EED43C66F1FC5C313F559BB02141BE09672A4
 ```
+
+(Subject `CN=wedsel2`, valid until 8 November 2029.)
 
 If it differs, stop: the file is not this project's. If it matches, add it to
 the machine's **Trusted People** store. In PowerShell **run as administrator**,
