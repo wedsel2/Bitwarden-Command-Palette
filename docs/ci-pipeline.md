@@ -112,7 +112,14 @@ The Store is the recommended way to install (ADR 20). For each release, until
 the Store submission API is automated:
 
 1. Download `BitwardenCommandPalette-<version>.msixbundle` from the GitHub
-   release, the file CI built and attested.
+   release, the file CI built and attested, and check it before uploading:
+
+   ```bash
+   gh attestation verify BitwardenCommandPalette-<version>.msixbundle --repo wedsel2/Bitwarden-Command-Palette --signer-workflow wedsel2/Bitwarden-Command-Palette/.github/workflows/ci.yml --source-ref refs/heads/main
+   ```
+
+   Upload nothing that does not pass: the Store would sign and ship it to
+   every install without CI in between (ADR 20).
 2. In [Partner Center](https://partner.microsoft.com/dashboard/home), open
    **Bitwarden for Command Palette**, start an update submission, and under
    **Packages** replace the bundle with this one.
@@ -178,7 +185,9 @@ These settings are not stored in the repository and must be redone if it is recr
    [Signing](#signing)).
 7. **Microsoft Store**: a Partner Center developer account (individual, free)
    with the product name reserved; its identity values are in
-   `Package.appxmanifest` (ADR 20).
+   `Package.appxmanifest` (ADR 20). The Microsoft account behind it uses a
+   passkey or security key as its second factor, and nobody else gets access
+   to the product: it can ship to every Store install without CI.
 
 Steps 3 to 6 can be applied with `gh api` or `gh secret`; steps 1 and 2 need
 the browser.

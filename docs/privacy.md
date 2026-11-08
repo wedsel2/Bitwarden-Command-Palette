@@ -36,8 +36,11 @@ Nothing from your vault is written to disk by the extension.
   Bitwarden's own apps), the extension asks your Bitwarden server's icon
   service for the icon of each login's website, by host name only (for example
   `github.com`). Bitwarden can therefore see which websites you have logins
-  for, but not your usernames or passwords. Private network names and IP
-  addresses are never sent. Turn the setting off to send nothing.
+  for, but not your usernames or passwords. Never sent: IP addresses, names
+  without a dot, and names under `localhost`, `.local`, `.internal`, `.lan`,
+  `.home.arpa`, `.test`, `.example` and `.invalid`. Other internal names, such
+  as `vpn.corp` or `wiki.intranet.example.org`, are sent like any website.
+  Turn the setting off to send nothing.
 
 Nothing is sent to the extension's author or to any other party.
 

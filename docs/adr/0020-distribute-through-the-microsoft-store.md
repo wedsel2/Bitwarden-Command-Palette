@@ -24,7 +24,7 @@ What is available to this project in November 2026:
 ## Decision
 
 - The **Microsoft Store** is the recommended way to install. The listing is
-  free, the package is the one CI built.
+  free, and what is uploaded is the bundle CI built and attested.
 - The manifest uses the **Store's identity**: the package name and publisher
   that Partner Center reserved. There is one package identity, so a Store copy
   and a GitHub copy replace each other instead of installing side by side.
@@ -58,11 +58,20 @@ What is available to this project in November 2026:
 ## Consequences
 
 - Store users install with one click, get updates, and trust nothing by hand.
-- The Store re-signs the bundle, so the file a Store user gets does not match
-  the provenance attestation byte for byte. The attestation covers the bundle
-  uploaded to Partner Center; verifying a Store install means trusting
-  Microsoft's certification and re-signing. This narrows ADR 6 item 7 for Store
-  installs only; the GitHub release keeps full verification.
+- **This narrows ADR 6 item 7 for Store installs** (the GitHub release keeps
+  full verification):
+  - The Store re-signs the bundle, so the file a Store user gets does not match
+    the provenance attestation byte for byte; a Store install trusts
+    Microsoft's certification and re-signing.
+  - The **Partner Center account is a second way to ship**: whoever can sign in
+    to it can upload any package under this identity, and the Store pushes it
+    to every install, bypassing branch protection, CI, the SBOM and the
+    attestation. To limit this, the account uses physical or passkey MFA and is
+    the maintainer's alone, and each upload is the bundle from the GitHub
+    release with its SHA-256 checked against that release's `SHA256SUMS.txt`
+    first (`docs/ci-pipeline.md`).
+  - Uploading from CI through the Store submission API would tie the Store
+    copy to CI again; that is the follow-up that closes this gap.
 - Store certification adds a review step, can reject or delay an update, and
   the listing must describe the Bitwarden CLI dependency for testers.
 - The development certificate must be recreated with the Store publisher as
