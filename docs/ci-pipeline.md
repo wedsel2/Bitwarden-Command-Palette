@@ -145,7 +145,7 @@ trusting the certificate.
 
 ### Trying a release build locally
 
-With a code signing certificate for `CN=wedsel2` in `Cert:\CurrentUser\My`
+With a code signing certificate for the manifest's Publisher (`CN=6FAB27EF-B582-4420-BFED-78BE0A44207B`) in `Cert:\CurrentUser\My`
 (a throwaway one from `New-SelfSignedCertificate -Type CodeSigningCert` is
 enough to test the build):
 

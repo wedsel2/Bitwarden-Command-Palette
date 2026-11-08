@@ -90,10 +90,11 @@ Open `BitwardenCommandPalette-signing.cer` (double-click it), and on the
 **Details** tab check that **Thumbprint** is exactly:
 
 ```text
-695EED43C66F1FC5C313F559BB02141BE09672A4
+(new certificate pending; see "Signing" in docs/ci-pipeline.md)
 ```
 
-(Subject `CN=wedsel2`, valid until 8 November 2029.)
+(Subject `CN=6FAB27EF-B582-4420-BFED-78BE0A44207B`, the publisher ID the
+Microsoft Store assigned to this project.)
 
 If it differs, stop: the file is not this project's. If it matches, add it to
 the machine's **Trusted People** store. In PowerShell **run as administrator**,
@@ -134,14 +135,18 @@ one as in step 5. The certificate stays trusted until it expires.
 Remove **Bitwarden for Command Palette** in Settings, Apps, Installed apps, or:
 
 ```powershell
-Get-AppxPackage wedsel2.BitwardenCommandPalette | Remove-AppxPackage
+Get-AppxPackage wedsel2.BitwardenforCommandPalette | Remove-AppxPackage
 ```
 
-Then remove the certificate, again as administrator:
+If you installed a GitHub release, also remove the certificate, again as
+administrator:
 
 ```powershell
-Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -eq 'CN=wedsel2' | Remove-Item
+Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -eq 'CN=6FAB27EF-B582-4420-BFED-78BE0A44207B' | Remove-Item
 ```
+
+Earlier pre-releases used the package name `wedsel2.BitwardenCommandPalette`
+and the subject `CN=wedsel2`; remove those the same way if you still have them.
 
 The extension keeps no vault data on disk; its settings file goes with the
 package. The Bitwarden CLI keeps its own data; `bw logout` removes your
