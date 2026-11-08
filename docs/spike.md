@@ -28,12 +28,48 @@ it). The value reaches the extension as JSON in the form's submit call, so it
 passes through Command Palette's process, as ADR 6 already states. Whether the
 host keeps a copy after the call is not documented. *Open, low priority.*
 
-**3. Process lifetime.** *Open: needs the live test below.* The spike build
-logs process start, page opens, host dispose and process exit.
+**3. Process lifetime.** Answered by the live test on 2026-11-08 (Windows 11,
+Command Palette restarted from its tray icon). Command Palette starts the
+extension process when it loads its extensions, before any page is opened, and
+keeps it for as long as it runs. On exit it disposes the extension, and the
+process then exits normally:
 
-**4. Session and power events.** *Open: needs the live test below.* The spike
-build subscribes to `SystemEvents.SessionSwitch`, `PowerModeChanged` and
-`SessionEnding` and logs what arrives.
+```
+01:02:20 extension disposed by host
+01:02:20 process exit
+01:02:33 process 13924 started      (Command Palette started again)
+```
+
+So the extension gets a shutdown call to lock in (`SessionManager.DisposeAsync`).
+Whether Command Palette also disposes an extension that sits idle for a long
+time was not observed in the short run; it does not matter for locking,
+because a dispose locks either way. A crash or a killed process gets no call;
+that case is covered by `bw lock` at start-up (ADR 9).
+
+**4. Session and power events.** Answered by the same live test. `SystemEvents`
+works inside the extension process, which has no message loop of its own:
+
+```
+00:59:49 session switch: SessionLock        (Win+L)
+01:00:05 session switch: SessionUnlock
+01:01:06 session switch: SessionLock        (Start → Power → Sleep)
+01:01:26 session switch: SessionUnlock
+```
+
+The test PC uses **Modern Standby** (the System log shows Kernel-Power events
+506 and 507, entering and exiting Modern Standby, at 01:01:05 and 01:01:06).
+Sleeping sent **no `PowerModeChanged` event at all**, only the session lock
+Windows performs when it enters standby. `PowerModes.Suspend` arrives only on
+older S3 sleep. Consequences:
+
+- With the default "require sign-in after sleep", sleep locks the vault through
+  `SessionLock`, so `SystemLockEvents` works as built.
+- If the user sets sign-in after sleep to **Never**, Modern Standby sends
+  neither event, and the vault stays unlocked through sleep until a timeout
+  passes. Both timeouts run on the wall clock, so they still apply on wake.
+  Closing this gap (for example by locking when the display turns off) is a
+  decision still to take.
+- `SessionEnding` was not observed; sign-out also sends `SessionLogoff`.
 
 **5. Settings storage.** The template's `SettingsManager` (toolkit
 `JsonSettingsManager`) writes `settings.json` in the folder returned by the
@@ -43,7 +79,7 @@ phase 4.
 
 ### Live test (questions 3 and 4)
 
-Needs Developer Mode (Settings → System → For developers), which only you
+Run on 2026-11-08; the results are above. To repeat it, it needs Developer Mode (Settings → System → For developers), which only you
 should turn on. Then:
 
 ```powershell
