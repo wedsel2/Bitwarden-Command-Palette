@@ -38,18 +38,18 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
             var outcome = services.Session.CopyAsync(itemId, field).GetAwaiter().GetResult();
             return outcome switch
             {
-                CopyOutcome.Copied => Toast(Copied(), CommandResult.Dismiss()),
-                CopyOutcome.Locked => Toast("The vault is locked. Open Bitwarden and unlock it.", CommandResult.KeepOpen()),
-                _ => Toast("This login has no such field.", CommandResult.KeepOpen()),
+                CopyOutcome.Copied => Toasts.Show(Copied(), CommandResult.Dismiss()),
+                CopyOutcome.Locked => Toasts.Show("The vault is locked. Open Bitwarden and unlock it.", CommandResult.KeepOpen()),
+                _ => Toasts.Show("This login has no such field.", CommandResult.KeepOpen()),
             };
         }
         catch (BwCliException exception)
         {
-            return Toast(exception.Message, CommandResult.KeepOpen());
+            return Toasts.Show(exception.Message, CommandResult.KeepOpen());
         }
         catch (ClipboardException exception)
         {
-            return Toast(exception.Message, CommandResult.KeepOpen());
+            return Toasts.Show(exception.Message, CommandResult.KeepOpen());
         }
     }
 
@@ -65,9 +65,6 @@ internal sealed partial class CopyFieldCommand : InvokableCommand
             CultureInfo.InvariantCulture,
             $"{what} copied. It is cleared from the clipboard in {services.ClearDelay.TotalSeconds:0} seconds.");
     }
-
-    private static CommandResult Toast(string message, CommandResult then) =>
-        CommandResult.ShowToast(new ToastArgs { Message = message, Result = then });
 }
 
 /// <summary>Locks the vault now: drops the key, the index and our clipboard value, then runs <c>bw lock</c>.</summary>
@@ -85,8 +82,15 @@ internal sealed partial class LockCommand : InvokableCommand
     public override ICommandResult Invoke()
     {
         session.LockAsync(LockReason.Command).GetAwaiter().GetResult();
-        return CommandResult.ShowToast(new ToastArgs { Message = "Bitwarden vault locked.", Result = CommandResult.KeepOpen() });
+        return Toasts.Show("Bitwarden vault locked.", CommandResult.KeepOpen());
     }
+}
+
+/// <summary>Shows a message, then does what <c>then</c> says.</summary>
+internal static class Toasts
+{
+    public static CommandResult Show(string message, CommandResult then) =>
+        CommandResult.ShowToast(new ToastArgs { Message = message, Result = then });
 }
 
 /// <summary>Segoe Fluent Icons glyphs used by the pages.</summary>

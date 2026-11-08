@@ -44,6 +44,22 @@ public sealed class SessionManagerTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AStartAfterAnUnlockDoesNotEndTheNewSession()
+    {
+        var gate = new TaskCompletionSource();
+        cli.ListGate = gate.Task;
+        var unlock = UnlockAsync();
+
+        var start = session.StartAsync(Token);
+        gate.SetResult();
+        await unlock.ConfigureAwait(true);
+        await start.ConfigureAwait(true);
+
+        Assert.DoesNotContain("lock", cli.Calls);
+        Assert.True(session.IsUnlocked);
+    }
+
+    [Fact]
     public async Task UnlockLoadsTheIndexAndSyncsWhenNeverSynced()
     {
         Assert.Equal(UnlockOutcome.Unlocked, await UnlockAsync());

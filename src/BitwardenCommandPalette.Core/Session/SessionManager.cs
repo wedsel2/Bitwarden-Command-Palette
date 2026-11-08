@@ -232,18 +232,35 @@ public sealed class SessionManager : IAsyncDisposable
     /// <summary>
     /// Runs <c>bw lock</c> once at start-up, closing any session a crash left behind (ADR 9).
     /// A CLI that is missing, untrusted or not logged in has nothing to close and is ignored.
+    /// It takes turns with <see cref="UnlockAsync"/>, and is skipped once a session has been
+    /// unlocked: <c>bw unlock</c> already made every earlier key worthless, and a late
+    /// <c>bw lock</c> would end the new session.
     /// </summary>
     /// <param name="cancellationToken">Stops the call.</param>
     /// <returns>A task that completes when the CLI is locked.</returns>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+        await unlocking.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            lock (gate)
+            {
+                if (generation != 0)
+                {
+                    return;
+                }
+            }
+
             await cli.LockAsync(null, cancellationToken).ConfigureAwait(false);
         }
         catch (BwCliException)
         {
             // Nothing to close; unlocking reports a CLI problem when it matters.
+        }
+        finally
+        {
+            _ = unlocking.Release();
         }
     }
 

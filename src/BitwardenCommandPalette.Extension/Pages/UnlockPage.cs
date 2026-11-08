@@ -11,12 +11,12 @@ internal sealed partial class UnlockPage : ContentPage
 {
     private readonly UnlockForm form;
 
-    public UnlockPage(SessionManager session)
+    public UnlockPage(SessionManager session, Action onUnlocked)
     {
         Icon = Icons.Lock;
         Title = "Unlock Bitwarden";
         Name = "Unlock";
-        form = new UnlockForm(session);
+        form = new UnlockForm(session, onUnlocked);
     }
 
     public override IContent[] GetContent() => [form];
@@ -29,10 +29,12 @@ internal sealed partial class UnlockPage : ContentPage
 internal sealed partial class UnlockForm : FormContent
 {
     private readonly SessionManager session;
+    private readonly Action onUnlocked;
 
-    public UnlockForm(SessionManager session)
+    public UnlockForm(SessionManager session, Action onUnlocked)
     {
         this.session = session;
+        this.onUnlocked = onUnlocked;
         TemplateJson = $$"""
             {
               "type": "AdaptiveCard",
@@ -64,7 +66,7 @@ internal sealed partial class UnlockForm : FormContent
     {
         if (!UnlockFormInput.TryReadPassword(inputs, out var password) || password is null)
         {
-            return Toast("Enter your master password.", CommandResult.KeepOpen());
+            return Toasts.Show("Enter your master password.", CommandResult.KeepOpen());
         }
 
         try
@@ -73,19 +75,23 @@ internal sealed partial class UnlockForm : FormContent
             var outcome = session.UnlockAsync(password).GetAwaiter().GetResult();
             return outcome switch
             {
-                UnlockOutcome.Unlocked => CommandResult.GoBack(),
-                UnlockOutcome.WrongPassword => Toast("The master password is incorrect.", CommandResult.KeepOpen()),
-                UnlockOutcome.NotLoggedIn => Toast("The Bitwarden CLI is not logged in. Run 'bw login' once in a terminal.", CommandResult.KeepOpen()),
-                _ => Toast("The vault was locked again before it finished loading. Try again.", CommandResult.KeepOpen()),
+                UnlockOutcome.Unlocked => Unlocked(),
+                UnlockOutcome.WrongPassword => Toasts.Show("The master password is incorrect.", CommandResult.KeepOpen()),
+                UnlockOutcome.NotLoggedIn => Toasts.Show("The Bitwarden CLI is not logged in. Run 'bw login' once in a terminal.", CommandResult.KeepOpen()),
+                _ => Toasts.Show("The vault was locked again before it finished loading. Try again.", CommandResult.KeepOpen()),
             };
         }
         catch (BwCliException exception)
         {
             // Our own fixed message, never bw's output (ADR 13).
-            return Toast(exception.Message, CommandResult.KeepOpen());
+            return Toasts.Show(exception.Message, CommandResult.KeepOpen());
         }
     }
 
-    private static CommandResult Toast(string message, CommandResult then) =>
-        CommandResult.ShowToast(new ToastArgs { Message = message, Result = then });
+    private CommandResult Unlocked()
+    {
+        // The vault page lists the logins now; it must ask for its items again.
+        onUnlocked();
+        return CommandResult.GoBack();
+    }
 }

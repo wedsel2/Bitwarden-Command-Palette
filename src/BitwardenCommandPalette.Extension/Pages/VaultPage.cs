@@ -18,7 +18,7 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
     public VaultPage(VaultServices services)
     {
         this.services = services;
-        unlockPage = new UnlockPage(services.Session);
+        unlockPage = new UnlockPage(services.Session, () => RaiseItemsChanged());
         lockCommand = new LockCommand(services.Session);
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
         Title = "Bitwarden";
@@ -49,7 +49,13 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
         {
             return
             [
-                new ListItem(lockCommand) { Title = "No matching logins", Subtitle = "Lock the vault", Icon = Icons.Lock },
+                // Enter does nothing here; locking stays one deliberate step away in the context menu.
+                new ListItem(new NoOpCommand())
+                {
+                    Title = "No matching logins",
+                    Icon = Icons.Key,
+                    MoreCommands = [new CommandContextItem(lockCommand)],
+                },
             ];
         }
 
