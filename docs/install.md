@@ -140,8 +140,8 @@ master password, and search your logins. The extension's settings are in
 Command Palette's settings, under **Extensions**, **Bitwarden**.
 
 If the Bitwarden commands show up twice after installing over an earlier
-version, run **Reload Command Palette extensions** in Command Palette, or exit
-PowerToys from its tray icon and start it again.
+version, type `reload` in Command Palette and run its command to reload
+extensions, or exit PowerToys from its tray icon and start it again.
 
 ## Updating
 
