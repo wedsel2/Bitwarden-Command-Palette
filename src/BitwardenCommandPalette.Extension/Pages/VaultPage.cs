@@ -15,13 +15,15 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
     private readonly VaultServices services;
     private readonly UnlockPage unlockPage;
     private readonly LockCommand lockCommand;
+    private readonly SyncCommand syncCommand;
 
     public VaultPage(VaultServices services)
     {
         this.services = services;
         unlockPage = new UnlockPage(services.Session, () => RaiseItemsChanged());
         lockCommand = new LockCommand(services.Session);
-        Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
+        syncCommand = new SyncCommand(services.Session, Refresh, this);
+        Icon = Icons.Shield;
         Title = "Bitwarden";
         Name = "Open";
         PlaceholderText = "Search logins by name, website or username";
@@ -55,7 +57,7 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
                 {
                     Title = "No matching logins",
                     Icon = Icons.Key,
-                    MoreCommands = [new CommandContextItem(lockCommand)],
+                    MoreCommands = [new CommandContextItem(syncCommand), new CommandContextItem(lockCommand)],
                 },
             ];
         }
@@ -64,6 +66,9 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
     }
 
     public void Dispose() => services.Session.Locked -= OnLocked;
+
+    /// <summary>Asks Command Palette for the items again, after a sync reloaded the list.</summary>
+    public void Refresh() => RaiseItemsChanged();
 
     // Enter opens the login's own page; the context menu keeps the copy actions one step closer.
     private ListItem Item(BwLogin login)
@@ -82,14 +87,19 @@ internal sealed partial class VaultPage : DynamicListPage, IDisposable
             more.Add(new CommandContextItem(CopyFieldCommand.For(services, login, CopyField.Totp, this)));
         }
 
+        more.Add(new CommandContextItem(syncCommand));
         more.Add(new CommandContextItem(lockCommand));
-        return new ListItem(new LoginPage(services, login, lockCommand))
+        var item = new ListItem(new LoginPage(services, login, lockCommand))
         {
             Title = login.Name,
             Subtitle = Subtitle(login),
             Icon = Icons.Key,
             MoreCommands = [.. more],
         };
+
+        // The key icon until the website icon arrives, if icons are on (ADR 19).
+        LoginIcons.Attach(item, services, login);
+        return item;
     }
 
     // "alice · example.com": the username and the first website, whichever the login has.

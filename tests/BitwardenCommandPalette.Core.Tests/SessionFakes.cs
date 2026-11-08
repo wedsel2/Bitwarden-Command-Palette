@@ -21,6 +21,8 @@ internal sealed class FakeCli : IBwCli
 
     public DateTimeOffset? LastSync { get; set; }
 
+    public Uri? ServerUrl { get; set; }
+
     public SessionKey? Issued { get; private set; }
 
     public List<BwLogin> Logins { get; } = [];
@@ -50,7 +52,7 @@ internal sealed class FakeCli : IBwCli
         var state = !LoggedIn ? BwVaultState.Unauthenticated
             : session is not null && ReferenceEquals(session, Issued) && CliUnlocked ? BwVaultState.Unlocked
             : BwVaultState.Locked;
-        return Task.FromResult(new BwStatus(state, LastSync, null));
+        return Task.FromResult(new BwStatus(state, LastSync, ServerUrl));
     }
 
     public Task<SessionKey> UnlockAsync(MasterPassword password, CancellationToken cancellationToken = default)

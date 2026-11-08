@@ -134,6 +134,11 @@ in [`tests/FakeBw/recordings/`](../tests/FakeBw/recordings/):
 - The master password **reprompt** flag (`reprompt: 1`) is ignored by the CLI:
   `bw get password` returns the password. Whether the extension honours it is
   a design decision for phase 4.
+- A failed reprompt (`bw unlock` with a wrong password) does not end the
+  current session: the phase 4 live test showed that copies from other logins
+  still work afterwards without unlocking again. This settles the open
+  consequence in [ADR 18](adr/0018-master-password-reprompt.md); the decision
+  stands.
 - Unicode names, usernames and passwords come back intact as UTF-8.
 - On a fresh data folder, the first command prints `Could not find data
   file…; creating it instead.` on stderr and still succeeds, so the parser must

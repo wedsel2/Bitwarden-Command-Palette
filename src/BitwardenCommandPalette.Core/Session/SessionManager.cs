@@ -54,6 +54,16 @@ public enum CopyOutcome
     WrongPassword,
 }
 
+/// <summary>How a sync ended, when it did not throw.</summary>
+public enum SyncOutcome
+{
+    /// <summary>The vault was synced and the index reloaded.</summary>
+    Synced,
+
+    /// <summary>The vault is locked; nothing was synced.</summary>
+    Locked,
+}
+
 /// <summary>
 /// Owns the session key and the vault index, decides when to lock, and runs every action that
 /// needs the vault (ADR 9, ADR 10). The extension never holds the key, the index or a fetched
@@ -108,6 +118,7 @@ public sealed class SessionManager : IAsyncDisposable
     private TimeSpan absoluteTimeout = DefaultAbsoluteTimeout;
     private TimeSpan syncInterval = DefaultSyncInterval;
     private SessionKey? key;
+    private Uri? vaultServer;
     private DateTimeOffset unlockedAt;
     private DateTimeOffset lastActivity;
     private ITimer? timer;
@@ -148,6 +159,24 @@ public sealed class SessionManager : IAsyncDisposable
     /// thread that caused it.
     /// </summary>
     public event EventHandler<LockEventArgs>? Locked;
+
+    /// <summary>Raised after an unlock has loaded the index, on the thread that unlocked.</summary>
+    public event EventHandler? Unlocked;
+
+    /// <summary>
+    /// The server the CLI was logged in to at the last unlock, as <c>bw status</c> reports it;
+    /// null for the US cloud or before the first unlock. Picks the icon server (ADR 19).
+    /// </summary>
+    public Uri? VaultServer
+    {
+        get
+        {
+            lock (gate)
+            {
+                return vaultServer;
+            }
+        }
+    }
 
     /// <summary>
     /// Whether the vault is unlocked, its index is loaded and neither timeout has passed. False
@@ -285,9 +314,91 @@ public sealed class SessionManager : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(password);
         ThrowIfDisposed();
         await unlocking.WaitAsync(cancellationToken).ConfigureAwait(false);
+        UnlockOutcome outcome;
         try
         {
-            return await UnlockOnceAsync(password, cancellationToken).ConfigureAwait(false);
+            outcome = await UnlockOnceAsync(password, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = unlocking.Release();
+        }
+
+        if (outcome == UnlockOutcome.Unlocked)
+        {
+            Unlocked?.Invoke(this, EventArgs.Empty);
+        }
+
+        return outcome;
+    }
+
+    /// <summary>
+    /// Runs <c>bw sync</c> and reloads the index, so changes made elsewhere show up. Counts as
+    /// activity. Takes turns with unlocks and reprompts, so the session key stays the same while
+    /// it runs.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the <c>bw</c> calls.</param>
+    /// <returns>How the sync ended.</returns>
+    /// <exception cref="BwCliException">The CLI failed, for example because the server cannot be reached.</exception>
+    public async Task<SyncOutcome> SyncAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        await unlocking.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            SessionKey? session;
+            long expected;
+            LockReason? expired;
+            lock (gate)
+            {
+                expired = Expired();
+                session = expired is null && index.IsLoaded ? key : null;
+                expected = generation;
+                if (session is not null)
+                {
+                    lastActivity = time.GetUtcNow();
+                }
+            }
+
+            if (session is null)
+            {
+                LockInBackground(expired);
+                return SyncOutcome.Locked;
+            }
+
+            IReadOnlyList<BwLogin> logins;
+            try
+            {
+                await cli.SyncAsync(session, cancellationToken).ConfigureAwait(false);
+                logins = await cli.ListLoginsAsync(session, cancellationToken).ConfigureAwait(false);
+            }
+            catch (BwCliException exception) when (exception.Kind is BwErrorKind.VaultLocked or BwErrorKind.NotLoggedIn)
+            {
+                await LockAsync(LockReason.CliLocked, expected).ConfigureAwait(false);
+                return SyncOutcome.Locked;
+            }
+
+            lock (gate)
+            {
+                // Locked, or a timeout passed, while bw was running: the list is not loaded.
+                expired = Expired();
+                if (expected != generation || expired is not null)
+                {
+                    session = null;
+                }
+                else
+                {
+                    index.Load(logins);
+                }
+            }
+
+            if (session is null)
+            {
+                LockInBackground(expired);
+                return SyncOutcome.Locked;
+            }
+
+            return SyncOutcome.Synced;
         }
         finally
         {
@@ -505,6 +616,7 @@ public sealed class SessionManager : IAsyncDisposable
                 // bw unlock has already made any earlier key worthless.
                 _ = Drop(clearClipboard: false);
                 key = issued;
+                vaultServer = status.ServerUrl;
                 unlockedAt = lastActivity = time.GetUtcNow();
                 expected = generation;
                 sync = NeedsSync(status.LastSync);

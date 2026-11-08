@@ -32,7 +32,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\*.png" />
+    <!-- Copied next to AppxManifest.xml, so a loose layout registered from bin has its images too. -->
+    <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
