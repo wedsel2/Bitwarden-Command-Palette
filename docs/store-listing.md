@@ -43,6 +43,17 @@ Kept here so changes are reviewed like code.
 
 Bitwarden, password manager, Command Palette, PowerToys, TOTP, 2FA, passwords
 
+## Restricted capability: runFullTrust
+
+Partner Center asks why the package declares `runFullTrust`. Answer:
+
+> This is a PowerToys Command Palette extension. Command Palette loads
+> extensions as out-of-process COM servers, which must run as full-trust
+> desktop processes; every Command Palette extension declares runFullTrust.
+> The extension also starts the official Bitwarden CLI (bw.exe) installed by
+> the user, after checking its Bitwarden Inc. signature, to unlock the vault
+> and read logins.
+
 ## Additional testing information
 
 > This is an extension for the PowerToys Command Palette; it has no window of
