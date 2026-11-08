@@ -1,3 +1,4 @@
+using System.Globalization;
 using BitwardenCommandPalette.Core;
 using BitwardenCommandPalette.Core.Bw;
 using BitwardenCommandPalette.Core.Clipboard;
@@ -101,6 +102,7 @@ internal sealed partial class MasterPasswordForm : FormContent
 {
     private readonly Func<MasterPassword, CommandResult> submit;
     private readonly Action<bool> showLoading;
+    private int submissions;
 
     public MasterPasswordForm(string intro, string button, Func<MasterPassword, CommandResult> submit, Action<bool> showLoading)
     {
@@ -157,6 +159,10 @@ internal sealed partial class MasterPasswordForm : FormContent
         finally
         {
             showLoading(false);
+
+            // New data makes Command Palette render the card again, so the typed master password
+            // never waits in the field for the next person who opens this page.
+            DataJson = string.Create(CultureInfo.InvariantCulture, $$"""{"submitted":{{++submissions}}}""");
         }
     }
 }
