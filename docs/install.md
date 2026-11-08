@@ -90,11 +90,11 @@ Open `BitwardenCommandPalette-signing.cer` (double-click it), and on the
 **Details** tab check that **Thumbprint** is exactly:
 
 ```text
-(new certificate pending; see "Signing" in docs/ci-pipeline.md)
+ED72DA0FF1331A20F0DD1F8182B8FF9F935E7CF5
 ```
 
 (Subject `CN=6FAB27EF-B582-4420-BFED-78BE0A44207B`, the publisher ID the
-Microsoft Store assigned to this project.)
+Microsoft Store assigned to this project; valid until 8 November 2029.)
 
 If it differs, stop: the file is not this project's. If it matches, add it to
 the machine's **Trusted People** store. In PowerShell **run as administrator**,
