@@ -7,7 +7,7 @@ yourself.
 There are two ways to install it ([ADR 20](adr/0020-distribute-through-the-microsoft-store.md)):
 
 - **Microsoft Store (recommended).** Do steps 1 and 2, then install
-  **Bitwarden for Command Palette** from the Microsoft Store. Microsoft signs
+  **Quick Vault Search** from the Microsoft Store. Microsoft signs
   the package and keeps it up to date; there is no certificate to trust.
 - **GitHub release.** For checking that the package was built by this
   repository's pipeline. These releases are signed with the project's own
@@ -150,7 +150,7 @@ one as in step 5. The certificate stays trusted until it expires.
 
 ## Uninstalling
 
-Remove **Bitwarden for Command Palette** in Settings, Apps, Installed apps, or:
+Remove **Quick Vault Search** in Settings, Apps, Installed apps, or:
 
 ```powershell
 Get-AppxPackage wedsel2.BitwardenforCommandPalette | Remove-AppxPackage

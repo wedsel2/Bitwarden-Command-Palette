@@ -121,7 +121,7 @@ the Store submission API is automated:
    Upload nothing that does not pass: the Store would sign and ship it to
    every install without CI in between (ADR 20).
 2. In [Partner Center](https://partner.microsoft.com/dashboard/home), open
-   **Bitwarden for Command Palette**, start an update submission, and under
+   **Quick Vault Search**, start an update submission, and under
    **Packages** replace the bundle with this one.
 3. Check the listing against [store-listing.md](store-listing.md) and submit.
 
