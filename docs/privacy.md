@@ -1,9 +1,9 @@
 # Privacy policy
 
-Bitwarden for Command Palette ("the extension") is an open-source extension for
+Quick Vault Search ("the extension") is an open-source Bitwarden extension for
 the PowerToys Command Palette. This policy covers the extension only.
 
-Last updated: 8 November 2026.
+Last updated: 10 November 2026.
 
 ## What we collect
 

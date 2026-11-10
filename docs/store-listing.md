@@ -5,6 +5,12 @@ Kept here so changes are reviewed like code.
 
 ## Properties
 
+- **Product name**: Quick Vault Search, the same as `DisplayName` in
+  `Package.appxmanifest`. Store policy 10.1.1.1 rejects a name that contains
+  another product's name, as "Bitwarden for Command Palette" was on
+  10 November 2026, so Bitwarden and Command Palette are named in the
+  description only. The package identity keeps the reserved name
+  `wedsel2.BitwardenforCommandPalette`, which users do not see.
 - **Category**: Productivity (subcategory: none).
 - **Privacy policy URL**:
   `https://github.com/wedsel2/Bitwarden-Command-Palette/blob/main/docs/privacy.md`
@@ -15,7 +21,7 @@ Kept here so changes are reviewed like code.
 
 ## Description
 
-> Bitwarden for Command Palette integrates with the Windows Command Palette to
+> Quick Vault Search integrates with the Windows Command Palette to
 > search your Bitwarden vault and copy a username, password or TOTP code
 > without leaving the keyboard.
 >
