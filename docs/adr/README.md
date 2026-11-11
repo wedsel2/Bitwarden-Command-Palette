@@ -7,7 +7,7 @@ the old one.
 | # | Decision | Status |
 |---|---|---|
 | [1](0001-host-on-github-public.md) | Host on GitHub as a public repository | Accepted |
-| [2](0002-dotnet-toolchain.md) | .NET toolchain: pinned SDK, central packages, lock files, analyzers, xUnit v3 | Accepted |
+| [2](0002-dotnet-toolchain.md) | .NET toolchain: pinned SDK, central packages, lock files, analyzers, xUnit v3 | Accepted; SDK roll-forward superseded by [21](0021-pin-the-dotnet-sdk-exactly.md) |
 | [3](0003-security-and-quality-scanning.md) | Security and quality scanning, open-source dependencies only | Accepted |
 | [4](0004-dependency-updates-with-renovate.md) | Renovate for dependency updates | Accepted |
 | [5](0005-releases-signed-msix.md) | Release with semantic-release: a signed MSIX with SBOM and provenance | Superseded by [20](0020-distribute-through-the-microsoft-store.md) |
@@ -26,6 +26,7 @@ the old one.
 | [18](0018-master-password-reprompt.md) | Logins marked for reprompt ask for the master password before each secret copy | Accepted |
 | [19](0019-website-icons-from-the-bitwarden-icon-server.md) | Website icons come from the vault's Bitwarden icon server and stay in memory | Accepted |
 | [20](0020-distribute-through-the-microsoft-store.md) | Distribute through the Microsoft Store; GitHub releases stay as the verifiable copy | Accepted |
+| [21](0021-pin-the-dotnet-sdk-exactly.md) | Pin the .NET SDK to an exact version; patches arrive as reviewed bumps | Accepted |
 
 New records use the same sections: Context, Decision, Alternatives considered,
 Consequences.
