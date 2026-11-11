@@ -1,6 +1,6 @@
 # 2. .NET toolchain: pinned SDK, central packages, lock files, analyzers, xUnit v3
 
-- Status: Accepted
+- Status: Accepted; SDK roll-forward superseded by [21](0021-pin-the-dotnet-sdk-exactly.md)
 - Date: 2026-11-07
 
 ## Context
