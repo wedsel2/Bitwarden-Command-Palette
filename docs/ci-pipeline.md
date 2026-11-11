@@ -36,7 +36,7 @@ for.
 | `.github/scripts/New-ReleasePackages.ps1` | Builds and signs the MSIX packages, the SBOM and the sums; runs locally too |
 | `tools/New-DevSigningCertificate.ps1` | Creates the development signing certificate and sets its secrets |
 | `.pre-commit-config.yaml` | Hooks shared by local commits and the lint job |
-| `global.json` | Pins the .NET SDK and selects Microsoft Testing Platform |
+| `global.json` | Pins the exact .NET SDK (ADR 21) and selects Microsoft Testing Platform |
 | `Directory.Build.props` | Analyzer, lock file, audit and determinism settings for every project |
 | `Directory.Packages.props` | The only place package versions are set |
 | `nuget.config` | nuget.org as the only package source |
