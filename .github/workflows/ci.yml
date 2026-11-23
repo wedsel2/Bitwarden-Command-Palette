@@ -19,7 +19,7 @@ env:
   DOTNET_NOLOGO: "1"
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   # renovate: datasource=npm depName=semantic-release
-  SEMANTIC_RELEASE_VERSION: 25.0.9
+  SEMANTIC_RELEASE_VERSION: 26.0.1
   # renovate: datasource=npm depName=@semantic-release/exec
   SEMANTIC_RELEASE_EXEC_VERSION: 7.1.0
 
